@@ -14,8 +14,6 @@ def word_count(title_text_pairs, verbose=False):
     return list(mapreduce(map_f=map_f, combine_f=reduce_f, reduce_f=reduce_f, verbose=verbose)(title_text_pairs))
 
 if __name__ == '__main__':
-    wc_input = [("hola", "hola que tal me llamo Pepe"), ("adios", "nos vemos, que sepas que me llamo Pepe")]
-
     wc_input = [("Moon", '"Never" does not exist for the human mind… only "Not yet."'),
                 ("Spooner", "You must be the dumbest, smart person in the world. And you must be the dumbest, dumb person in the world."),
                 ("Blake", "Easy! Take it easy! I hate personal violence, especially when I’m the person.")]

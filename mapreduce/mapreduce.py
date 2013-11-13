@@ -29,7 +29,6 @@ def shuffle(kv_pairs_list):
         shuffle_dict[k].append(v)
     return shuffle_dict
 
-
 def id_map_f(k, v):
     '''
     Identity map function
@@ -43,13 +42,12 @@ def id_reduce_f(k, vs):
     for v in vs:
         yield((k, v))
 
-
 def print_mr_stats(combine_dict, shuffle_dict):
     print '\n', '-'*30
     print "combine_dict:"
-    print "\t#keys:", len(combine_dict.keys()), "| #values:", len(combine_dict.values()), "| contents:", dict(combine_dict)
+    print "\t#keys:", len(combine_dict.keys()), "| contents:", dict(combine_dict)
     print "shuffle_dict:"
-    print "\t#keys:", len(shuffle_dict.keys()), "| #values:", len(shuffle_dict.values()), "| contents:", dict(shuffle_dict)
+    print "\t#keys:", len(shuffle_dict.keys()), "| contents:", dict(shuffle_dict)
     print '-'*30, '\n'
 
 def mapreduce(map_f = id_map_f, reduce_f = id_reduce_f, combine_f = id_reduce_f, verbose=False):
@@ -73,4 +71,5 @@ def mapreduce(map_f = id_map_f, reduce_f = id_reduce_f, combine_f = id_reduce_f,
         return concatMapIter(uncurry(reduce_f), shuffle_dict.iteritems())
     return mr
 
-
+def run_mapreduce(input_pairs, map_f = id_map_f, reduce_f = id_reduce_f, combine_f = id_reduce_f, verbose=False):
+    return list(mapreduce(map_f=map_f, combine_f=combine_f, reduce_f=reduce_f, verbose=verbose)(input_pairs))
