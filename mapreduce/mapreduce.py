@@ -51,18 +51,16 @@ def id_reduce_f(k, vs):
     for v in vs:
         yield((k, v))
 
-#def print_mr_stats(combine_dict, shuffle_dict):
-
 def print_mr_stats(mappers_inputs, combiners_inputs, combiners_outputs, shuffled_pairs):
     print '\n', '-'*30
     print "mappers_inputs:"
     print "\t#mappers:", len(mappers_inputs), "| contents:", mappers_inputs
     print "combiners_inputs:"
-    print "\t#keys:", map(lambda d: len(d.keys()), combiners_inputs), "| contents:", map(dict, combiners_inputs)
+    print "\t", map(dict, combiners_inputs)
     print "combiners_outputs:"
-    print "\t#pairs:", map(len, combiners_outputs), "| contents:", combiners_outputs
+    print "\t", combiners_outputs
     print "shuffled_pairs:"
-    print "\t#keys:", shuffled_pairs, "| contents:", dict(shuffled_pairs)
+    print "\t", dict(shuffled_pairs)
     print '-'*30, '\n'
 
 def mapreduce(map_f = id_map_f, reduce_f = id_reduce_f, combine_f = id_reduce_f, num_mappers = 4,  verbose=False):
