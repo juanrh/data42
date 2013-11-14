@@ -87,7 +87,7 @@ def mapreduce(map_f = id_map_f, reduce_f = id_reduce_f, combine_f = id_reduce_f,
     return mr
 
 def run_mapreduce(input_pairs, map_f = id_map_f, reduce_f = id_reduce_f, combine_f = id_reduce_f, verbose=False):
-    return list(mapreduce(map_f=map_f, combine_f=combine_f, reduce_f=reduce_f, verbose=verbose)(input_pairs))
+    return mapreduce(map_f=map_f, combine_f=combine_f, reduce_f=reduce_f, verbose=verbose)(input_pairs)
 
 if __name__ == '__main__':
     def word_count(title_text_pairs, verbose=False):
@@ -98,7 +98,7 @@ if __name__ == '__main__':
         def reduce_f(word, counts):
             yield((word, sum(counts)))
 
-        return list(mapreduce(map_f=map_f, combine_f=reduce_f, reduce_f=reduce_f, verbose=verbose)(title_text_pairs))
+        return mapreduce(map_f=map_f, combine_f=reduce_f, reduce_f=reduce_f, verbose=verbose)(title_text_pairs)
 
     wc_input = [(None, "hola que tal hola"), (None, "ey hola"), (None, "como estamos")]
     print "Executing word_count for input:", wc_input

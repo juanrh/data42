@@ -11,7 +11,7 @@ def word_count(title_text_pairs, verbose=False):
     def reduce_f(word, counts):
         yield((word, sum(counts)))
 
-    return list(mapreduce(map_f=map_f, combine_f=reduce_f, reduce_f=reduce_f, verbose=verbose)(title_text_pairs))
+    return mapreduce(map_f=map_f, combine_f=reduce_f, reduce_f=reduce_f, verbose=verbose)(title_text_pairs)
 
 if __name__ == '__main__':
     wc_input = [("Moon", '"Never" does not exist for the human mind… only "Not yet."'),
