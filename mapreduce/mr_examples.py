@@ -18,4 +18,5 @@ if __name__ == '__main__':
                 ("Spooner", "You must be the dumbest, smart person in the world. And you must be the dumbest, dumb person in the world."),
                 ("Blake", "Easy! Take it easy! I hate personal violence, especially when I’m the person.")]
     print "Executing word_count for input:", wc_input
-    print "Result:", word_count(wc_input, verbose=True) 
+    print word_count(wc_input, verbose=True)
+    print "\n\nResult not verbose:", word_count(wc_input, verbose=False)  
