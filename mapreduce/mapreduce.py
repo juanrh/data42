@@ -4,7 +4,11 @@
 from collections import defaultdict
 from random import randint
 '''
-Simple sequential mapreduce interpreter
+Simple sequential mapreduce emulator. The main function is mapreduce(), that generates a function that emulates the
+execution of a MapReduce computtion using the map, reduce and combine functions provided. 
+    - The list of input pairs is randomly splitted to simulate the existance of several mappers, each of them with a part of the input
+    - An optional "verbose" argument can be specified for mapreduce() so several intermediate structures used in the MapReduce simulatiomn
+are printed to stdout, with the aim of helping to understand the behaviour of the algorithm expressed through the map, reduce and combine functions
 
 Developed for python 2.7
 '''
@@ -21,9 +25,15 @@ def concat_map(f, xs):
     return [v for vs in map(f, xs) for v in vs]
 
 def concat(xss):
+    '''
+    Concatenates a lists of lists into a single list
+    '''
     return [x for xs in xss for x in xs]
 
 def random_split(xs, n_parts):
+    '''
+    Randominly splits the elements of the iterable xs into at most n_parts lists
+    '''
     parts = [[] for i in xrange(0, n_parts)]
     for x in xs:
         parts[randint(0, n_parts-1)].append(x)
@@ -71,8 +81,9 @@ def mapreduce(map_f = id_map_f, reduce_f = id_reduce_f, combine_f = id_reduce_f,
     reduce_f :: (k2, [v2]) -> iterable((k3, v3))
     combine_f :: (k2, [v2]) -> iterable((k2, v2))
 
-    These functions take two arguments and return iterators of tuples. 
-    This function returns a function mr :: iterable((k1, v1)) -> iterable((k2, v2)) that performs a simulation of a MapReduce computation. 
+    These functions take two arguments and return iterators of tuples. The three functions are optional and the corresponding funtions are used in their absence
+
+    This function returns a function mr :: iterable((k1, v1)) -> [(k2, v2)] that performs a simulation of a MapReduce computation. The list of input pairs is randomly splitted to simulate the existance of several mappers, each of them with a part of the input. The maximum number of parts of the splitted list is num_mappers, with a default of 4
 
     If verbose is True then additional execution info will be printed to stdout at the end of each execution of the returning function mr
     '''
@@ -87,6 +98,10 @@ def mapreduce(map_f = id_map_f, reduce_f = id_reduce_f, combine_f = id_reduce_f,
     return mr
 
 def run_mapreduce(input_pairs, map_f = id_map_f, reduce_f = id_reduce_f, combine_f = id_reduce_f, verbose=False):
+    '''
+    Helper functioon that builds a function that simulates a MapReduce computation and applies it to the iterable of pairs input_pairs. 
+    See mapreduce() for details
+    '''
     return mapreduce(map_f=map_f, combine_f=combine_f, reduce_f=reduce_f, verbose=verbose)(input_pairs)
 
 if __name__ == '__main__':
