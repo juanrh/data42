@@ -1,9 +1,11 @@
 #!/usr/local/bin/python2.7
 
 '''
+Proof of concept for a Python client for HBase based on JPype
+
 For HBase Version 0.94.6-cdh4.4.0, rUnknown, Tue Sep  3 20:09:51 PDT 2013
 '''
-from jpype import *
+import jpype
 import glob
 
 def iterate_iterable(iterable):
@@ -22,13 +24,13 @@ cp_jars_str = ":".join(set(jar for cp_dir in cp_dirs.split(':') for jar in glob.
 
 test_table_name = 'test_hbase_py_client'
 
-startJVM(_jvm_lib_path, "-ea","-Djava.class.path=" + cp_jars_str)
+jpype.startJVM(_jvm_lib_path, "-ea","-Djava.class.path=" + cp_jars_str)
 try:
-    HTablePoolClass = JClass("org.apache.hadoop.hbase.client.HTablePool")
+    HTablePoolClass = jpype.JClass("org.apache.hadoop.hbase.client.HTablePool")
     connection_pool = HTablePoolClass()
     test_table = connection_pool.getTable(test_table_name)
-    BytesClass = JClass("org.apache.hadoop.hbase.util.Bytes")
-    ScanClass = JClass("org.apache.hadoop.hbase.client.Scan")
+    BytesClass = jpype.JClass("org.apache.hadoop.hbase.util.Bytes")
+    ScanClass = jpype.JClass("org.apache.hadoop.hbase.client.Scan")
     scan_all = ScanClass()
         # class ResultScanner
     result_scanner = test_table.getScanner(scan_all)
@@ -38,11 +40,11 @@ try:
     for result in iterate_iterable(result_scanner):
         print "row id:", result.getRow()
         for key_val in iterate_iterable(result.list()):
-            print "\t", "family : {family}, qual : {qual}, value : {value}".format(family = key_val.getFamily(), qual = key_val.getQualifier(), value = BytesClass.toString(key_val.getValue()).encode('ascii', errors='ignore'))
+            print "\t", "family : {family}, qual : {qual}, value : {value}".format(family = key_val.getFamily(), qual = key_val.getQualifier(), value = BytesClass.toString(key_val.getValue()).encode('ascii', 'ignore'))
     print '-'*30, '\n'*2
     test_table.close()
-except JavaException as ex:
+except jpype.JavaException as ex:
     print 'exception', ex.javaClass(), ex.message()
     print 'stacktrace:', ex.stacktrace()
 
-shutdownJVM()
+jpype.shutdownJVM()
