@@ -2,8 +2,9 @@
 
 '''
 Proof of concept for a Python client for HBase based on JPype
-
-For HBase Version 0.94.6-cdh4.4.0, rUnknown, Tue Sep  3 20:09:51 PDT 2013
+Tested for:
+    - HBase Version 0.94.6-cdh4.4.0, rUnknown, Tue Sep  3 20:09:51 PDT 2013
+    - python2.6 and python2.7, JPype installed with $ sudo pip install JPype1
 '''
 import jpype
 import glob
