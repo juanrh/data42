@@ -1,0 +1,9 @@
+{
+    "twitter" : {
+        "credentials_filename" : ".promboot_credentials", 
+        "appname" : "PromBoot"
+    },
+    "places" : {
+        "ES-Madrid" : {"lat" : 40.4167754, "long" : -3.7037901999999576}
+    }
+}
