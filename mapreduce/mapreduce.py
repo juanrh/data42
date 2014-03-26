@@ -20,7 +20,7 @@ def uncurry(f):
 
 def concat_map(f, xs):
     '''
-    Version with Python iterators of Haskell's concatMap
+    Python version of Haskell's concatMap
     '''
     return [v for vs in map(f, xs) for v in vs]
 
@@ -32,12 +32,12 @@ def concat(xss):
 
 def random_split(xs, n_parts):
     '''
-    Randominly splits the elements of the iterable xs into at most n_parts lists
+    Randomly splits the elements of the iterable xs into at most n_parts lists
     '''
-    parts = [[] for i in xrange(0, n_parts)]
+    parts = defaultdict(list)
     for x in xs:
         parts[randint(0, n_parts-1)].append(x)
-    return [part for part in parts if len(part) > 0]
+    return parts.values()
 
 def shuffle(kv_pairs_list):
     '''
