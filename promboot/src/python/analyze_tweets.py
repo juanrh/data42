@@ -34,7 +34,7 @@ def authenticate(rebuild=False):
 
     Following https://pythonhosted.org/tweepy/html/auth_tutorial.html?highlight=oauthhandler
     '''
-    # create OAuthHandler with the consumer token or secret for 
+    # create OAuthHandler with the consumer token and secret for 
     # the corresponding Twitter app
     auth = tweepy.OAuthHandler(_conf["twitter"]["key"], _conf["twitter"]["secret"])
 
@@ -97,6 +97,7 @@ def explore_trends(api, woeid = 23424950):
 
 def get_trending_topics_text(api, place="ES-Madrid"): #woeid = 23424950):
     '''
+    api - tweepy.api.API object
     place - string encoding a location as in configuration file
 
     Trends have the shape:
@@ -107,31 +108,44 @@ def get_trending_topics_text(api, place="ES-Madrid"): #woeid = 23424950):
     response = api.trends_place(api.trends_closest(**_conf["places"][place])[0]["woeid"])
     return [{k : trend[k] for k in ['name', 'query']} for trend in response[0]['trends'] ]
 
-def get_tweets_for_trends(api, trends, count=15, lang='es'):
+def get_tweets_for_trends(api, trends, popular = False, count=15, tweet_processor = None, **search_params):
     '''
     Launch a search to Twitter for tweets corresponding to the trend spec in the list trends, that has the format returned by get_trending_topics_text(). 
-    The result_type 'popular' should be used in the queries but it limits the result to 15 tweets ignoring 'count', for what it appears to be a bug https://dev.twitter.com/discussions/19472. 
 
+    api - tweepy.api.API object
     trends - list of dictionaries in the format returned by get_trending_topics_text()
     count - number of tweets to retrieve per element in trends
-    lang - language to use in the query to Twitter
+    popular - whether to search for poular tweets (result_type 'popular' in the queries) or not. This limits the result to 15 tweets maximum ignoring 'count', for what it appears to be a bug https://dev.twitter.com/discussions/19472.
+    tweet_processor -  Function that takes an object of the class tweepy.models.Status and returns a dictionary corresponding to projecting some fields of that object. This way projection may occour at levels deeper that the first level. By default the fields 'text', 'favorite_count', 'created_at' are projected. 
+    search_params - any other arguments for calling api.search, e.g. lang ("es", "en", ..)
 
-    Returns an iterator of the input list where each dictionary has been extended with a 'tweets' field that filter each returned tweet to keep the fields 'text', 'favorite_count', 'created_at'. See https://dev.twitter.com/docs/platform-objects/tweets for the meaning of the fields. 
+    Returns an iterator of the input list where each dictionary has been extended with a 'tweets' field that contains the result of applying tweet_processor to each tweepy.models.Status returned by the corresponding query to twitter. See https://dev.twitter.com/docs/platform-objects/tweets for the meaning of the fields. 
     '''
-    return (dict({"tweets" : 
-                    [{k : result.__dict__[k] for k in ['text', 'favorite_count', 'created_at']}
-                        for result in api.search(q=trend['query'], lang=lang, count=count)
-                        #, result_type = 'popular')
-                    ]
-                  },
-                 **trend) for trend in trends)
+    if tweet_processor is None:
+        tweet_processor = lambda status: {k : status.__dict__[k] for k in ['text', 'favorite_count', 'created_at']}
+    query = (lambda trend : sorted(api.search(q=trend['query'], count=count, result_type = 'popular', **search_params), 
+                                   key=lambda r : r.favorite_count, reverse=True)[:count]) if popular\
+                else (lambda trend : api.search(q=trend['query'], count=count, **search_params))
+    return (dict({"tweets" : [ tweet_processor(status) for status in query(trend) ]}, **trend) 
+                 for trend in trends)
+
+def storm_tweet_processor(status):
+    shallow_fields = ['text', 'favorite_count', 'retweeted', 'in_reply_to_screen_name',
+                      'retweet_count', 'possibly_sensitive', 'lang', 'created_at', 'source']
+    ret = {k : status.__dict__.get(k, None) for k in shallow_fields}
+    ret['author.screen_name'] = status.author.screen_name
+    ret['hashtags.text'] = [hashtag['text'] for hashtag in status.entities['hashtags']]
+    ret['place.full_name'] = status.place.full_name if not status.place is None else None
+    return ret 
 
 def _test_get_trending_tweets():
     auth = authenticate(rebuild=False)
     api = tweepy.API(auth)
     trends = get_trending_topics_text(api)
     tr = 0
-    for trend_tweets in get_tweets_for_trends(api, trends, count = 100):
+    
+    for trend_tweets in get_tweets_for_trends(api, trends, count = 5, popular = True,
+                                              tweet_processor = storm_tweet_processor, lang = "es"):
         tr +=1
         print 'tr', tr, '-'*30
         print "trend", trend_tweets["name"]
