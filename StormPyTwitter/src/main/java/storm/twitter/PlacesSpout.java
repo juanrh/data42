@@ -54,10 +54,9 @@ public class PlacesSpout extends ShellSpout implements IRichSpout {
 	public PlacesSpout(int freq) {
 		// Note the use of a specific python version
 		// super("python2.7", "trends_spout.py");
-		super("python2.7", "python/places_spout.py");
+		super("python2.7", "python/twitter_storm/places_spout.py");
 		this.tickFrequency = freq;
 	}
-
 	
 	@Override
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {

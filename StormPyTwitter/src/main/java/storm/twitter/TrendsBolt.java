@@ -14,7 +14,7 @@ public class TrendsBolt extends ShellBolt implements IRichBolt {
 	private static final long serialVersionUID = 1239454072915556852L;
 
 	public TrendsBolt() {
-		super("python2.7", "python/trends_bolt.py");
+		super("python2.7", "python/twitter_storm/trends_bolt.py");
 	}
 	
 	@Override

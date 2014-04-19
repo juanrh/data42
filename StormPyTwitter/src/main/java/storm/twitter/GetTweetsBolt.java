@@ -15,7 +15,7 @@ public class GetTweetsBolt extends ShellBolt implements IRichBolt {
 	private static final long serialVersionUID = 6545122122040077036L;
 	
 	public GetTweetsBolt() {
-		super("python2.7", "python/get_tweets_bolt.py");
+		super("python2.7", "python/twitter_storm/get_tweets_bolt.py");
 	}
 
 	@Override
