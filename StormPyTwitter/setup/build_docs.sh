@@ -14,7 +14,6 @@ mkdir -p $(dirname ${DOC_TRG_DIR})
 # Generate sphinx project
 sphinx-apidoc -A "${AUTHOR}" -H "${PROJECT_NAME}" -f -F -o ${DOC_TRG_DIR} ${PY_SRC_DIR}
 # add the python code to the python path for sphinx
-# export PYTHONPATH=${PYTHONPATH}:$(dirname ${PY_SRC_DIR})
 export PYTHONPATH=${PYTHONPATH}:${PY_SRC_DIR}
 # generate html documentation
 pushd ${DOC_TRG_DIR}
