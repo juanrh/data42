@@ -17,5 +17,5 @@ CREATE TABLE IF NOT EXISTS storm_tweets (
     topic_name VARCHAR(50),
     -- number of times the tweet for the key has been found in the popularity list
     hits INT UNSIGNED,
-    PRIMARY KEY(created_at, author_screen_name)
+    PRIMARY KEY(author_screen_name, created_at)
 );
