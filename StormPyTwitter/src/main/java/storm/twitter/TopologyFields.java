@@ -15,6 +15,5 @@ class TopologyFields {
 	static final String CREATED_AT = "created_at";
 	static final String SOURCE = "source";
 	static final String AUTHOR_SCREEN_NAME = "author_screen_name";
-	static final String HASHTAGS_TEXTS = "hashtags_texts";
-	static final String PLACE_FULL_NAME = "place_full_name"; 
+	static final String HASHTAGS_TEXTS = "hashtags_texts"; 
 }

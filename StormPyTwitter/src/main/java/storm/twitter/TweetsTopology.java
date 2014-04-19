@@ -13,9 +13,9 @@ import backtype.storm.topology.TopologyBuilder;
  * $ mvn clean package  
  * Launch with:
  * 	- local mode:
- * $ storm jar target/storm-py-twitter-0.0.1-SNAPSHOT.jar storm.twitter.TweetsTopology
+ * $ storm jar target/storm-py-twitter-0.0.1-SNAPSHOT-jar-with-dependencies.jar storm.twitter.TweetsTopology
  *  *  - cluster mode:
- * $ storm jar target/storm-py-twitter-0.0.1-SNAPSHOT.jar storm.twitter.TweetsTopology topologyName
+ * $ storm jar target/storm-py-twitter-0.0.1-SNAPSHOT-jar-with-dependencies.jar storm.twitter.TweetsTopology topologyName
  * 
  * WARNING: when a topology running in local mode is interrupted, those shell process (e.g. a python process) started by the 
  * topology might NOT be stopped, and so be killed by hand (e.g. with killall)  
@@ -27,13 +27,13 @@ public class TweetsTopology {
 	public static void main(String[] args) {
 		TopologyBuilder builder = new TopologyBuilder();
 		
-		// This spout has no paralelism 
+		// This spout has no parallelism 
 		builder.setSpout("PlacesSpout", new PlacesSpout(), 1);
 			// fieldsGrouping is not really needed here, there is no sub state that needs to be processed together
 		// builder.setBolt("TrendsBolt", new TrendsBolt(), 4).fieldsGrouping("PlacesSpout", new Fields(TopologyFields.PLACE));
 		builder.setBolt("TrendsBolt", new TrendsBolt(), 4).shuffleGrouping("PlacesSpout");
-			// FIXME pasar a 4 * 5
-		builder.setBolt("GetTweetsBolt", new GetTweetsBolt(), 5).shuffleGrouping("TrendsBolt"); 
+		builder.setBolt("GetTweetsBolt", new GetTweetsBolt(), 4*2).shuffleGrouping("TrendsBolt"); 
+		builder.setBolt("DBStoreBolt", new DBStoreBolt(), 4*2).shuffleGrouping("GetTweetsBolt");
 		
 		Config conf = new Config();
 		conf.setDebug(true);
@@ -49,9 +49,6 @@ public class TweetsTopology {
 		} else {
 			LocalCluster cluster = new LocalCluster();
 			cluster.submitTopology("test", conf, builder.createTopology());
-		//	Utils.sleep(10000);
-			// cluster.killTopology("test");
-		//	cluster.shutdown();
 		}
 
 	}

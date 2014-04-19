@@ -20,10 +20,18 @@ public class GetTweetsBolt extends ShellBolt implements IRichBolt {
 
 	@Override
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {
+		/*
+		 * ["claudiapapo","2014-04-19 06:22:10",
+		 * 3,"ConcluAnillo","CarolinaWalter",
+		 * "es",14,false,
+		 * "Twitter for iPhone","Barcelona",false,
+		 * "\u201C@CarolinaWalter: \u201C@JulieGiliberti: \"Ahora siii! Es oficial! Me caso!! Ya @fdelrinconCNN me dio mi #ConcluAnillo\u201D http:\/\/t.co\/1CvEbUj94a\u201D\u201D👏😊",
+		 * "Siii"]
+		 * */
 		declarer.declare(new Fields(TopologyFields.AUTHOR_SCREEN_NAME, TopologyFields.CREATED_AT,
 				TopologyFields.FAV_COUNT, TopologyFields.HASHTAGS_TEXTS, TopologyFields.IN_REPLY_TO_SCREEN_NAME, 
 				TopologyFields.LANG, TopologyFields.RETWEET_COUNT, TopologyFields.RETWEETED, 
-				TopologyFields.SOURCE, TopologyFields.PLACE_FULL_NAME, TopologyFields.POSSIBLY_SENSITIVE,
+				TopologyFields.SOURCE, TopologyFields.PLACE, TopologyFields.POSSIBLY_SENSITIVE,
 				TopologyFields.TEXT, TopologyFields.TOPIC_NAME));
 	}
 

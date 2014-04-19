@@ -25,6 +25,10 @@ def log_tweeter_error(tweep_error, sleep_time=2):
     time.sleep(sleep_time)
 
 class PlacesSpout(storm.Spout):
+    '''
+    Emit a tuple with a single field for a place as encoded in the module get_tweets,
+    with the frequency specified in the storm configuration passed at initialize()
+    '''
     # Field in the configuration map where the emision frequency is 
     # configured
     _frequency_conf_key = "PlacesSpoutFrequency"
@@ -48,7 +52,8 @@ class PlacesSpout(storm.Spout):
 
 class TwitterBolt(storm.Bolt):
     '''
-    Extending storm.Bolt as no ack is handled because we are using a non reliable source with no defined id for the messages
+    This class extends storm.Bolt as no ack is handled because we are using a non reliable source with no defined id for the messages.
+    As additional functionality, a tweepy.api.API object ready to used is stored at self._twitter_api during initialization. 
 
     NOTE: don't forget to setup authentication calling "python2.7 get_tweets.py" __before__ compiling the topology: the auth file has to be included in the jar and copied to the cluster
     '''
@@ -59,6 +64,10 @@ class TwitterBolt(storm.Bolt):
         self._twitter_api = tweepy.API(auth)
 
 class TrendsBolt(TwitterBolt):
+    '''
+    Assumes each input tuple has a single field for the name of a place as encoded in get_tweets. This bolt emits tuples (place, trend name, query) for the trending topics at the coordinates corresponding to that place. 
+    In case the Twitter REST API Rate limit is hit, this bolt sleeps for some seconds. 
+    '''
     _rate_limit_sleep_time = 1
 
     def process(self, tuple):
@@ -74,7 +83,9 @@ class TrendsBolt(TwitterBolt):
 
 class GetTweetsBolt(TwitterBolt):
     '''
-    Extending storm.Bolt as no ack is handled because we are using a non reliable source with no defined id for the messages
+    Assumes each input tuple is of the shape (place, topic_name, query) where query is a twitter query string for the trending topic topic_name. For each input tuple Twitter is queried for the most popular tweets, and some fields are projected from each resulting tweets and then emitted, see process() for details about the fields. 
+
+    In case the Twitter REST API Rate limit is hit, this bolt sleeps for some seconds. 
     '''
     @staticmethod
     def _storm_tweet_processor(status):
@@ -90,6 +101,15 @@ class GetTweetsBolt(TwitterBolt):
     _rate_limit_sleep_time = 1
 
     def process(self, tuple):
+        '''
+        Must fulfil the following contract expressed in the Java wrapper:
+
+        declarer.declare(new Fields(TopologyFields.AUTHOR_SCREEN_NAME, TopologyFields.CREATED_AT,
+                TopologyFields.FAV_COUNT, TopologyFields.HASHTAGS_TEXTS, TopologyFields.IN_REPLY_TO_SCREEN_NAME, 
+                TopologyFields.LANG, TopologyFields.RETWEET_COUNT, TopologyFields.RETWEETED, 
+                TopologyFields.SOURCE, TopologyFields.PLACE, TopologyFields.POSSIBLY_SENSITIVE,
+                TopologyFields.TEXT, TopologyFields.TOPIC_NAME));
+        '''
         place, topic_name, query = tuple.values
         try: 
             tweets = list(get_tweets.get_tweets_for_trends(self._twitter_api, [{"query" : query}], popular = True, tweet_processor = self._storm_tweet_processor))[0]["tweets"]
@@ -98,11 +118,12 @@ class GetTweetsBolt(TwitterBolt):
             log_tweeter_error(te, sleep_time=self._rate_limit_sleep_time)
             return 
 
-        for processed_tweet in tweets:
-            # Add trending topic name 
-            processed_tweet["topic_name"] = topic_name
-            # Here we take the place name from those used internally by the topology, instead of the from place names returned by twitter
-            processed_tweet["place_full_name"] = place
-            # sort by field name, to fulfil Java contract
-            tup = map(itemgetter(1), sorted(processed_tweet.iteritems(), key = itemgetter(0)))
+        for pt in tweets:
+            # Here we add the trending topic name, and take the place name from those
+            # used internally by get_tweets, instead of the from place names returned by twitter
+            tup = [pt['author_screen_name'], pt['created_at'], 
+                   pt['favorite_count'], pt['hashtags_texts'], pt['in_reply_to_screen_name'],
+                   pt['lang'], pt['retweet_count'], pt['retweeted'],
+                   pt['source'], place, pt['possibly_sensitive'],
+                   pt['text'], topic_name]
             storm.emit(tup)
