@@ -1,0 +1,18 @@
+<html>
+<!-- 
+   Refresh each 5 seconds http://librelist.com/browser//flask/2013/2/10/autorefresh-in-flask/#d33445e2c92e0f3c802450f3d80402b7 
+-->
+<head>
+<meta http-equiv="refresh" content="{{refresh_rate}}">
+</head>
+
+<body>
+    <!-- http://pygal.org/web/ -->
+    <div align="center">
+        <figure >
+            <!-- This 'src' path must be the same defined in Flask -->
+            <embed type="image/svg+xml" src="/barchart.svg" width="600" />
+        </figure>
+    </div>
+</body>
+</html>
