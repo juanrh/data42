@@ -55,6 +55,8 @@ import pygal
 from pygal.style import DarkSolarizedStyle
 
 import requests
+from base64 import b64decode
+
 from collections import deque
 
 _hbase_base_url='http://localhost:9998/'
@@ -87,13 +89,50 @@ def graph_something():
      return bar_chart.render_response()
 
 @app.route('/barchart.html')
-def barchart(refresh_rate=5):
+def barchart(refresh_rate=10000):
     ''' 
     By default jinja2 will look for templates at the templates folder 
     in the root of the application.
     By using the template be get autorefresh by using a <meta> header
     '''
-    return render_template('barchart.html', refresh_rate=refresh_rate)
+    return render_template('chart.html', refresh_rate=refresh_rate, 
+                                         title="chart")
+
+'''
+>>> headers = {'accept': 'application/json'}
+>>> r = requests.get("http://localhost:9998/test_hbase_py_client/john", headers=headers)
+>>> r.json()
+{u'Row': [{u'Cell': [{u'column': u'aW5mbzphZ2U=', u'timestamp': 1393791170961, u'$': u'NDI='}, {u'column': u'dmlzaXRzOmFtYXpvbi5jb20=', u'timestamp': 1393791171026, u'$': u'NQ=='}, {u'column': u'dmlzaXRzOmdvb2dsZS5lcw==', u'timestamp': 1393791171063, u'$': u'Mg=='}], u'key': u'am9obg=='}]}
+>>> r.json()['Row']
+[{u'Cell': [{u'column': u'aW5mbzphZ2U=', u'timestamp': 1393791170961, u'$': u'NDI='}, {u'column': u'dmlzaXRzOmFtYXpvbi5jb20=', u'timestamp': 1393791171026, u'$': u'NQ=='}, {u'column': u'dmlzaXRzOmdvb2dsZS5lcw==', u'timestamp': 1393791171063, u'$': u'Mg=='}], u'key': u'am9obg=='}]
+
+>>> from base64 import b64decode
+>>> b64decode(r.json()['Row'][0]['key'])
+'john'
+>>> [(b64decode(col['column']), b64decode(col['$']), long(col['timestamp'])) for col in r.json()['Row'][0]['Cell'] ]
+[('info:age', '42', 1393791170961L), ('visits:amazon.com', '5', 1393791171026L), ('visits:google.es', '2', 1393791171063L)]
+'''
+
+_get_hBase_cell_format = 'http://{server}/{table}/{row_key}'
+_get_hBase_cell_headers = {'accept': 'application/json'}
+def get_hBase_cell(server, table, row_key):
+    '''
+    :param server: e.g. 'localhost:9998'
+
+    Example:
+       get_hBase_cell("localhost:9998", "test_hbase_py_client", "john")
+    '''
+    # TODO: try - except for the request and extra argument for the timeout of the request
+    r = requests.get(_get_hBase_cell_format.format(server=server, table=table, row_key=row_key), 
+                     headers=_get_hBase_cell_headers)
+    key = b64decode(r.json()['Row'][0]['key'])
+    row = [{'family' : column[:sep_idx], 'qual' : column[sep_idx + 1:], 
+      'value' :  b64decode(cell['$']), 'timestamp' : long(cell['timestamp']) }   
+           for cell in r.json()['Row'][0]['Cell'] 
+           for column in (b64decode(cell['column']), ) 
+           for sep_idx in (column.find(':'), ) ]
+    return {'key' : key, 'row' : row}
+
 
 if __name__ == '__main__':
     import sys
