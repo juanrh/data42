@@ -42,6 +42,11 @@ ROW                                              COLUMN+CELL
  mary                                            column=info:age, timestamp=1393791170995, value=26                                                                                         
  mary                                            column=visits:amazon.com, timestamp=1393791171079, value=4                                                                                 
  mary                                            column=visits:facebook.com, timestamp=1393791171098, value=2   
+
+TODO: this is requesting some online CSS, in offline mode animation is lost and the serve
+time is slower, probably due to that. Consider downloading the CSS and adding it to the 
+application if possible. Maybe this is due to using DarkSolarizedStyle, consider dropping
+the style if this implies this kind of dependencies
 '''
 from flask import Flask, make_response
 from flask import render_template
@@ -96,7 +101,7 @@ def barchart(refresh_rate=10000):
     By using the template be get autorefresh by using a <meta> header
     '''
     return render_template('chart.html', refresh_rate=refresh_rate, 
-                                         title="chart")
+                            title="chart", chart_src="/barchart.svg")
 
 '''
 >>> headers = {'accept': 'application/json'}
@@ -113,18 +118,27 @@ def barchart(refresh_rate=10000):
 [('info:age', '42', 1393791170961L), ('visits:amazon.com', '5', 1393791171026L), ('visits:google.es', '2', 1393791171063L)]
 '''
 
-_get_hBase_cell_format = 'http://{server}/{table}/{row_key}'
-_get_hBase_cell_headers = {'accept': 'application/json'}
-def get_hBase_cell(server, table, row_key):
+_get_hBase_row_format = 'http://{server}/{table}/{row_key}/{family}'
+_get_hBase_row_headers = {'accept': 'application/json'}
+def get_hBase_row(server, table, row_key, family=''):
     '''
     :param server: e.g. 'localhost:9998'
+    :return None if there was some error with the request, otherwise
+        returns a dictionary like
+
+        {'key': 'john', 'row': [{'qual': 'age', 'value': '42', 'family': 'info', 'timestamp': 1393791170961L}, {'qual': 'amazon.com', 'value': '5', 'family': 'visits', 'timestamp': 1393791171026L}, {'qual': 'google.es', 'value': '2', 'family': 'visits', 'timestamp': 1393791171063L}]}
+
+        where decoding from base64 was already performed
 
     Example:
-       get_hBase_cell("localhost:9998", "test_hbase_py_client", "john")
+       get_hBase_row("localhost:9998", "test_hbase_py_client", "john")
     '''
     # TODO: try - except for the request and extra argument for the timeout of the request
-    r = requests.get(_get_hBase_cell_format.format(server=server, table=table, row_key=row_key), 
-                     headers=_get_hBase_cell_headers)
+    try:
+        r = requests.get(_get_hBase_row_format.format(server=server, table=table, row_key=row_key, family=family), 
+                         headers=_get_hBase_row_headers)
+    except:
+        None
     key = b64decode(r.json()['Row'][0]['key'])
     row = [{'family' : column[:sep_idx], 'qual' : column[sep_idx + 1:], 
       'value' :  b64decode(cell['$']), 'timestamp' : long(cell['timestamp']) }   
@@ -133,11 +147,55 @@ def get_hBase_cell(server, table, row_key):
            for sep_idx in (column.find(':'), ) ]
     return {'key' : key, 'row' : row}
 
+# http://localhost:9999/hbase/svg/barchart/localhost:9998/test_hbase_py_client/john/visits
+@app.route('/hbase/svg/barchart/<server>/<table>/<row_key>/<family>')
+def svg_barchart_for_hbase_row(server, table, row_key, family):
+    '''
+    A chart will be build from the values of the cells in that
+    row key and column family
+
+    NOTE: assuming all the values are of type float
+
+    TODO: consider PROBLEM of versions
+    '''
+    # get values from HBase: don't forget conversion to number
+    row = get_hBase_row(server, table, row_key, family)
+    values = [float(cell['value']) for cell in row['row']]
+
+    # build an SVG chart
+    bar_chart = pygal.Bar(style=DarkSolarizedStyle)
+    bar_chart.add('Values', values)
+    return bar_chart.render_response()
+
+_svg_barchart_for_hbase_row_url_format = '/hbase/svg/barchart/{server}/{table}/{row_key}/{family}'
+@app.route('/hbase/charts/barchart/<server>/<table>/<row_key>/<family>/', defaults={'refresh' : 5})
+@app.route('/hbase/charts/barchart/<server>/<table>/<row_key>/<family>/<int:refresh>')
+def barchart_for_hbase_row(server, table, row_key, family, refresh):
+    ''' 
+    By default jinja2 will look for templates at the templates folder 
+    in the root of the application.
+    By using the template be get autorefresh by using a <meta> header
+    '''
+    return render_template('chart.html', refresh_rate=refresh, title="HBase Barchart",
+                            chart_src=_svg_barchart_for_hbase_row_url_format.format(server=server, table=table, row_key=row_key, family=family))
+
+'''
+http://stackoverflow.com/questions/18602276/flask-urls-w-variable-parameters
+
+TODO: s2 is the proposed format for a composed chart, using bar for barchart, pie for piechart, etc, 
+covering all the chart types in pygal
+
+>>> s
+'/hbase/charts/barchart/<server>/<table>/<row_key>/<family>/<int:refresh>'
+>>> s2 = '/hbase/charts/<server>/<table>/bar/cols/2/<row_key>/<family>/pie/<row_key>/<family>/refresh/5'
+
+'''
 
 if __name__ == '__main__':
     import sys
     print 'Usage: <port>'
     port = int(sys.argv[1])
-    print 'Go to http://127.0.0.1:{port}/barchart.html, http://127.0.0.1:{port}/barchart.png, http://127.0.0.1:{port}/barchart.svg'.format(port=port)
-
+    print 'Go to http://localhost:9999/hbase/svg/barchart/localhost:9998/test_hbase_py_client/john/visits'
+    print 'Go to http://localhost:9999/hbase/charts/barchart/localhost:9998/test_hbase_py_client/john/visits'
+    # print 'Go to http://127.0.0.1:{port}/barchart.html, http://127.0.0.1:{port}/barchart.png, http://127.0.0.1:{port}/barchart.svg'.format(port=port)
     app.run(debug=True, port=port)
