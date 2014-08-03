@@ -59,42 +59,13 @@ import requests
 from base64 import b64decode
 from operator import itemgetter
 
-_hbase_base_url='http://localhost:9998/'
-
 app = Flask(__name__)
 
-@app.route('/barchart.svg')
-def graph_something():
-     bar_chart = pygal.Bar(style=DarkSolarizedStyle)
-     # bar_chart.add('Fibonacci', [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55])
-     bar_chart.add('Values', app.extensions['values'])
-     app.extensions['values'].rotate(1)
-     return bar_chart.render_response()
-
-@app.route('/barchart.html')
-def barchart(refresh_rate=10000):
-    ''' 
-    By default jinja2 will look for templates at the templates folder 
-    in the root of the application.
-    By using the template be get autorefresh by using a <meta> header
-    '''
-    return render_template('chart.html', refresh_rate=refresh_rate, 
-                            title="chart", chart_src="/barchart.svg")
-
 '''
->>> headers = {'accept': 'application/json'}
->>> r = requests.get("http://localhost:9998/test_hbase_py_client/john", headers=headers)
->>> r.json()
-{u'Row': [{u'Cell': [{u'column': u'aW5mbzphZ2U=', u'timestamp': 1393791170961, u'$': u'NDI='}, {u'column': u'dmlzaXRzOmFtYXpvbi5jb20=', u'timestamp': 1393791171026, u'$': u'NQ=='}, {u'column': u'dmlzaXRzOmdvb2dsZS5lcw==', u'timestamp': 1393791171063, u'$': u'Mg=='}], u'key': u'am9obg=='}]}
->>> r.json()['Row']
-[{u'Cell': [{u'column': u'aW5mbzphZ2U=', u'timestamp': 1393791170961, u'$': u'NDI='}, {u'column': u'dmlzaXRzOmFtYXpvbi5jb20=', u'timestamp': 1393791171026, u'$': u'NQ=='}, {u'column': u'dmlzaXRzOmdvb2dsZS5lcw==', u'timestamp': 1393791171063, u'$': u'Mg=='}], u'key': u'am9obg=='}]
-
->>> from base64 import b64decode
->>> b64decode(r.json()['Row'][0]['key'])
-'john'
->>> [(b64decode(col['column']), b64decode(col['$']), long(col['timestamp'])) for col in r.json()['Row'][0]['Cell'] ]
-[('info:age', '42', 1393791170961L), ('visits:amazon.com', '5', 1393791171026L), ('visits:google.es', '2', 1393791171063L)]
+Dictionary from chart type as string to a format string for the URL to get the chart as svg.
+Each function registers itself in this dictionary
 '''
+_supported_chart_types = {}
 
 _get_hBase_row_format = 'http://{server}/{table}/{row_key}/{family}'
 _get_hBase_row_headers = {'accept': 'application/json'}
@@ -136,28 +107,9 @@ def get_hBase_row(server, table, row_key, family=''):
            for sep_idx in (column.find(':'), ) ]
     return {'key' : key, 'row' : row}
 
-# http://localhost:9999/hbase/svg/barchart/localhost:9998/test_hbase_py_client/john/visits
-@app.route('/hbase/svg/barchart/<server>/<table>/<row_key>/<family>')
-def svg_barchart_for_hbase_row(server, table, row_key, family):
-    '''
-    A chart will be build from the values of the cells in that
-    row key and column family
-
-    NOTE: assuming all the values are of type float
-
-    TODO: consider PROBLEM of versions
-    '''
-    # get values from HBase: don't forget conversion to number
-    row = get_hBase_row(server, table, row_key, family)
-    values = [float(cell['value']) for cell in row['row']]
-
-    # build an SVG chart
-    bar_chart = pygal.Bar(style=DarkSolarizedStyle)
-    bar_chart.add('Values', values)
-    return bar_chart.render_response()
-
-@app.route('/hbase/svg/bar/<server>/<table>/<family>/<title>/<path:row_keys>')
-def svg_barchart_for_hbase_rows(server, table, family, title, row_keys):
+_supported_chart_types['bar'] = '/hbase/svg/bar/{server}/{table}/{title}/{family}/{row_keys}'
+@app.route('/hbase/svg/bar/<server>/<table>/<title>/<family>/<path:row_keys>')
+def svg_barchart_for_hbase_rows(server, table, title, family, row_keys):
     '''
     A chart will be build from the values of the cells in that column family
      * The x-axis labels are the column qualifiers found in all cells for the keys
@@ -168,7 +120,7 @@ def svg_barchart_for_hbase_rows(server, table, family, title, row_keys):
     NOTE: assuming all the values are of type float
     NOTE: taking last version of each cell
     '''
-    # Example URL: http://localhost:9999/hbase/svg/bar/localhost:9998/test_hbase_py_client/visits/Sites%20Visited/john/mary
+    # Example URL: http://localhost:9999/hbase/svg/bar/localhost:9998/test_hbase_py_client/Sites%20Visited/visits/john/mary
     # get values from HBase: don't forget conversion to number  
     #  {row : { qual : value) } }
     rows = { row['key'] : { cell['qual'] : float(cell['value']) for cell in row['row'] } 
@@ -178,6 +130,7 @@ def svg_barchart_for_hbase_rows(server, table, family, title, row_keys):
     # get sorted values for x axis
     x_labels = sorted({ qual for qual_vals in rows.values() for qual in qual_vals.keys() })
     # build an SVG chart
+    # TODO: consider specifying styles (e.g. chart = pygal.Bar(style=DarkSolarizedStyle))
     chart = pygal.Bar()
     chart.title = title
     chart.x_labels = x_labels
@@ -221,53 +174,68 @@ s2_ex = '/hbase/charts/localhost:9998/test_hbase_py_client/cols/2/bar/john/visit
 'bar/john/visits/pie/mary/visits' <-- suena mejor
 '''
 
-# TODO move to configuration up in the script: use a dictionary from
-#  string codes to constructors, and use it to replace svg_barchart_for_hbase_row
-#  by svg_chart_for_hbase_row as general as possible, falling to concrete functions
-#  when there's no other option. Also modify urls to use codes 'bar', 'pie' instead
-#  of barchart etc
-# TODO support all reasonable pygal chart types
-chart_types = ['bar']
+# _supported_chart_types['bar'] = '/hbase/svg/bar/{server}/{table}/{title}/{family}/{row_keys}'
 
-class ChartsSpecConverter(BaseConverter):
-    chart_spec_keys = ['chart_type', 'row_key', 'family']
 
+class ChartsSpecsConverter(BaseConverter):
     def __init__(self, url_map):
         super(ChartsSpecConverter, self).__init__(url_map)
-        self.regex = '(?:.*(?=/refresh))'
+        self.regex = '(?:.*)'
 
     def to_python(self, value):
         '''
-        e.g. value is 'bar/john/visits/pie/mary/visits'
+        For tuples (chart_type, chart_title, family, row_key) 
+        e.g. value is 'bar/Sites%20Visited/visits/john/bar/Sites%20Visited/visits/mary'
 
         Apply validation rules here, e.g. 
           - valid chart types: see variable chart_types
-          - each chart spec must be a 3 elements tuples of the shape (chart_type, row_key, family)
+          - each chart spec must be a 4 elements
+
+        Return a list of spec tuples
         '''
         split_value = value.split('/')
         n_splits = len(split_value)
-        if (n_splits % 3) != 0:
-            raise ValidationError("Chart specs must be 3 elements tuples of the shape (chart_type, row_key, family)")
-        # TODO: check valid chart type with set difference
-# >>> 
-# >>> [ dict(zip(chart_spec_keys,  split_value[spec_idx * 3: (spec_idx + 1) *3 ]))   for spec_idx in xrange(0, n_splits / 3)]
-# [{'chart_type': 'bar', 'family': 'visits', 'row_key': 'john'}, {'chart_type': 'pie', 'family': 'visits', 'row_key': 'mary'}]
+        tuple_size = 4
+        if (n_splits % tuple_size) != 0:
+            raise ValidationError("Chart specs must be 4 elements tuples of the shape (chart_type, chart_title, family, row_key)")
+        specs = [ split_value[spec_idx * tuple_size: (spec_idx + 1) * tuple_size ] 
+                    for spec_idx in xrange(0, n_splits / tuple_size) ]
+        for spec in specs:
+            chart_type = spec[0]
+            if chart_type not in _supported_chart_types.keys():
+                 raise ValidationError("Unknow chart type {chart_type} for chart specification {chart_spec}".format(chart_type=chart_type, chart_spec=spec))
+        return specs
 
-        if value == 'maybe':
-            if self.randomify:
-                return not randrange(2)
-            raise ValidationError()
-        return value == 'yes'
+    def to_url(self, specs):
+        # Don't forget to eliminate trailing '/'
+        return '/'.join(('/'.join(spec) for spec in specs))[:-1]
+# Register the converter
+app.url_map.converters['charts_specs'] = ChartsSpecsConverter
 
-    def to_url(self, value):
-        return value and 'yes' or 'no'
+_charts_table_template='charts_table.html'
+@app.route('/hbase/charts/<server>/<table>/cols/<int:num_cols>/refresh/<int:refresh>/<charts_specs:charts>')
+def charts_table(server, table, num_cols, refresh, charts_specs, row_keys):
+    ''' 
+    By default jinja2 will look for templates at the templates folder 
+    in the root of the application.
 
+    By using the template be get autorefresh using a <meta> header
+
+    TODO: configurable table_width
+
+    TODO: consider other routing '/hbase/charts2/<server>/<table>/cols/<int:num_cols>/refresh/<int:refresh>/<charts_spec_2:charts>/keys/<path:row_keys>'
+        with charts_spec_b for triples (char_type, chart_title,  family) using the same row keys for all the charts, with a BaseConverter using
+        self.regex = '(?:.*(?=/keys))'
+    '''
+    # TODO
+    return render_template(_charts_table_template, table_width=1200, refresh_rate=refresh, title="HBase Barchart",
+                            chart_src=_svg_barchart_for_hbase_row_url_format.format(server=server, table=table, row_key=row_key, family=family))
 
 if __name__ == '__main__':
     import sys
     print 'Usage: <port>'
     port = int(sys.argv[1])
-    print 'Go to http://localhost:9999/hbase/svg/bar/localhost:9998/test_hbase_py_client/visits/Sites%20Visited/john/mary'
+    print 'Go to http://localhost:9999/hbase/svg/bar/localhost:9998/test_hbase_py_client/Sites%20Visited/visits/john/mary'
     print 'Go to http://localhost:9999/hbase/charts/barchart/localhost:9998/test_hbase_py_client/john/visits'
     # print 'Go to http://127.0.0.1:{port}/barchart.html, http://127.0.0.1:{port}/barchart.png, http://127.0.0.1:{port}/barchart.svg'.format(port=port)
     app.run(debug=True, port=port)
