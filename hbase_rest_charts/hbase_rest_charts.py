@@ -50,40 +50,18 @@ the style if this implies this kind of dependencies
 '''
 from flask import Flask, make_response
 from flask import render_template
-
-# For matplotlib
-from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
-from matplotlib.figure import Figure
-import StringIO
+from werkzeug.routing import BaseConverter, ValidationError
 
 import pygal
 from pygal.style import DarkSolarizedStyle
 
 import requests
 from base64 import b64decode
-
-from collections import deque
+from operator import itemgetter
 
 _hbase_base_url='http://localhost:9998/'
-values = [1,0,2, 5, 7, 2]
 
 app = Flask(__name__)
-if not hasattr(app, 'extensions'):
-    app.extensions = {}
-app.extensions['values'] = deque(values)
-
-@app.route('/barchart.png')
-def plotOne():
-    fig = Figure()
-    axis = fig.add_subplot(1, 1, 1)
-    axis.bar(range(len(values)), values)
-
-    canvas = FigureCanvas(fig)
-    output = StringIO.StringIO()
-    canvas.print_png(output)
-    response = make_response(output.getvalue())
-    response.mimetype = 'image/png'
-    return response
 
 @app.route('/barchart.svg')
 def graph_something():
@@ -122,7 +100,15 @@ _get_hBase_row_format = 'http://{server}/{table}/{row_key}/{family}'
 _get_hBase_row_headers = {'accept': 'application/json'}
 def get_hBase_row(server, table, row_key, family=''):
     '''
+    Queries HBase for a the last version of the cells in a table and row key, and optionally for a 
+    particular column family. 
+    Values are decoded from base64
+
     :param server: e.g. 'localhost:9998'
+    :param table name of the HBase table
+    :param row_key key of the HBase row to obtain
+    :param family if this value is present only the cells in that family are obtained 
+
     :return None if there was some error with the request, otherwise
         returns a dictionary like
 
@@ -130,19 +116,22 @@ def get_hBase_row(server, table, row_key, family=''):
 
         where decoding from base64 was already performed
 
-    Example:
-       get_hBase_row("localhost:9998", "test_hbase_py_client", "john")
+    Examples:
+    >>> get_hBase_row("localhost:9998", "test_hbase_py_client", "john")
+    {'key': 'john', 'row': [{'qual': 'age', 'value': '42', 'family': 'info', 'timestamp': 1393791170961L}, {'qual': 'amazon.com', 'value': '5', 'family': 'visits', 'timestamp': 1393791171026L}, {'qual': 'google.es', 'value': '2', 'family': 'visits', 'timestamp': 1393791171063L}]}
+    >>> get_hBase_row("localhost:9998", "test_hbase_py_client", "john", "visits")
+    {'key': 'john', 'row': [{'qual': 'amazon.com', 'value': '5', 'family': 'visits', 'timestamp': 1393791171026L}, {'qual': 'google.es', 'value': '2', 'family': 'visits', 'timestamp': 1393791171063L}]}
     '''
     # TODO: try - except for the request and extra argument for the timeout of the request
-    try:
-        r = requests.get(_get_hBase_row_format.format(server=server, table=table, row_key=row_key, family=family), 
-                         headers=_get_hBase_row_headers)
+    try: 
+        hbase_request = requests.get(_get_hBase_row_format.format(server=server, table=table, row_key=row_key, family=family), 
+                                                                  headers=_get_hBase_row_headers)
     except:
-        None
-    key = b64decode(r.json()['Row'][0]['key'])
+        return None
+    key = b64decode(hbase_request.json()['Row'][0]['key'])
     row = [{'family' : column[:sep_idx], 'qual' : column[sep_idx + 1:], 
       'value' :  b64decode(cell['$']), 'timestamp' : long(cell['timestamp']) }   
-           for cell in r.json()['Row'][0]['Cell'] 
+           for cell in hbase_request.json()['Row'][0]['Cell'] 
            for column in (b64decode(cell['column']), ) 
            for sep_idx in (column.find(':'), ) ]
     return {'key' : key, 'row' : row}
@@ -167,6 +156,38 @@ def svg_barchart_for_hbase_row(server, table, row_key, family):
     bar_chart.add('Values', values)
     return bar_chart.render_response()
 
+@app.route('/hbase/svg/bar/<server>/<table>/<family>/<title>/<path:row_keys>')
+def svg_barchart_for_hbase_rows(server, table, family, title, row_keys):
+    '''
+    A chart will be build from the values of the cells in that column family
+     * The x-axis labels are the column qualifiers found in all cells for the keys
+     * For each key there is a bar group with a bar in each point of the x-axis. None 
+     is used to fill missing values for a qual, with the usual meaning in pygal (no 
+     value will be shown for that bar group at the point)
+
+    NOTE: assuming all the values are of type float
+    NOTE: taking last version of each cell
+    '''
+    # Example URL: http://localhost:9999/hbase/svg/bar/localhost:9998/test_hbase_py_client/visits/Sites%20Visited/john/mary
+    # get values from HBase: don't forget conversion to number  
+    #  {row : { qual : value) } }
+    rows = { row['key'] : { cell['qual'] : float(cell['value']) for cell in row['row'] } 
+                for row_key in row_keys.split('/') 
+                for row in (get_hBase_row(server, table, row_key, family),)
+            }
+    # get sorted values for x axis
+    x_labels = sorted({ qual for qual_vals in rows.values() for qual in qual_vals.keys() })
+    # build an SVG chart
+    chart = pygal.Bar()
+    chart.title = title
+    chart.x_labels = x_labels
+        # add the values for each key
+    for key, qual_vals in rows.iteritems():
+        # use get to fill spaces with None
+        chart.add(key, [ qual_vals.get(label) for label in x_labels ])
+    # return as a Flask response
+    return chart.render_response()
+
 _svg_barchart_for_hbase_row_url_format = '/hbase/svg/barchart/{server}/{table}/{row_key}/{family}'
 @app.route('/hbase/charts/barchart/<server>/<table>/<row_key>/<family>/', defaults={'refresh' : 5})
 @app.route('/hbase/charts/barchart/<server>/<table>/<row_key>/<family>/<int:refresh>')
@@ -187,15 +208,66 @@ covering all the chart types in pygal
 
 >>> s
 '/hbase/charts/barchart/<server>/<table>/<row_key>/<family>/<int:refresh>'
->>> s2 = '/hbase/charts/<server>/<table>/bar/cols/2/<row_key>/<family>/pie/<row_key>/<family>/refresh/5'
 
+s_ex = 'http://localhost:9999/hbase/charts/barchart/localhost:9998/test_hbase_py_client/john/visits/'
+>>> s2 = '/hbase/charts/<server>/<table>/bar/cols/2/<row_key>/<family>/pie/<row_key>/<family>/refresh/5'
+s2b = '/hbase/charts/<server>/<table>/cols/2/bar/<row_key>/<family>/pie/<row_key>/<family>/refresh/<int:refresh>'
+
+s2_ex = '/hbase/charts/localhost:9998/test_hbase_py_client/cols/2/bar/john/visits/pie/mary/visits/refresh/10'
+
+>>> re.match('.*(?=refresh)', "bar/john/visits/pie/mary/visits/refresh/10").group(0)
+'bar/john/visits/pie/mary/visits/'
+>>> re.match('.*(?=/refresh)', "bar/john/visits/pie/mary/visits/refresh/10").group(0)
+'bar/john/visits/pie/mary/visits' <-- suena mejor
 '''
+
+# TODO move to configuration up in the script: use a dictionary from
+#  string codes to constructors, and use it to replace svg_barchart_for_hbase_row
+#  by svg_chart_for_hbase_row as general as possible, falling to concrete functions
+#  when there's no other option. Also modify urls to use codes 'bar', 'pie' instead
+#  of barchart etc
+# TODO support all reasonable pygal chart types
+chart_types = ['bar']
+
+class ChartsSpecConverter(BaseConverter):
+    chart_spec_keys = ['chart_type', 'row_key', 'family']
+
+    def __init__(self, url_map):
+        super(ChartsSpecConverter, self).__init__(url_map)
+        self.regex = '(?:.*(?=/refresh))'
+
+    def to_python(self, value):
+        '''
+        e.g. value is 'bar/john/visits/pie/mary/visits'
+
+        Apply validation rules here, e.g. 
+          - valid chart types: see variable chart_types
+          - each chart spec must be a 3 elements tuples of the shape (chart_type, row_key, family)
+        '''
+        split_value = value.split('/')
+        n_splits = len(split_value)
+        if (n_splits % 3) != 0:
+            raise ValidationError("Chart specs must be 3 elements tuples of the shape (chart_type, row_key, family)")
+        # TODO: check valid chart type with set difference
+# >>> 
+# >>> [ dict(zip(chart_spec_keys,  split_value[spec_idx * 3: (spec_idx + 1) *3 ]))   for spec_idx in xrange(0, n_splits / 3)]
+# [{'chart_type': 'bar', 'family': 'visits', 'row_key': 'john'}, {'chart_type': 'pie', 'family': 'visits', 'row_key': 'mary'}]
+
+        if value == 'maybe':
+            if self.randomify:
+                return not randrange(2)
+            raise ValidationError()
+        return value == 'yes'
+
+    def to_url(self, value):
+        return value and 'yes' or 'no'
+
 
 if __name__ == '__main__':
     import sys
     print 'Usage: <port>'
     port = int(sys.argv[1])
-    print 'Go to http://localhost:9999/hbase/svg/barchart/localhost:9998/test_hbase_py_client/john/visits'
+    print 'Go to http://localhost:9999/hbase/svg/bar/localhost:9998/test_hbase_py_client/visits/Sites%20Visited/john/mary'
     print 'Go to http://localhost:9999/hbase/charts/barchart/localhost:9998/test_hbase_py_client/john/visits'
     # print 'Go to http://127.0.0.1:{port}/barchart.html, http://127.0.0.1:{port}/barchart.png, http://127.0.0.1:{port}/barchart.svg'.format(port=port)
     app.run(debug=True, port=port)
