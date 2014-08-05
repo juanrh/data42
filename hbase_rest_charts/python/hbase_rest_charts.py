@@ -2,51 +2,7 @@
 # -*- coding: UTF-8 -*-
 
 '''
-- Following:
-  * https://gist.github.com/rduplain/1641344 <-- Flask + Matplotlib
-  * http://en.m.wikipedia.org/wiki/Matplotlib <-- more Matplotlib
-
-- Dependencies:
-$ sudo yum install libpng-devel.x86_64
-$ sudo pip2.7 install flask matplotlib requests
-
-for pygal install lxml
-        - Site: http://lxml.de/tutorial.html
-        - Installation:
-
-(py27env)[cloudera@localhost bicing-bcn]$ sudo yum install python-lxml.x86_64
-<-- that installs it for python2.6 omming with the system
-
-For python 2.7 installed from sources in CentOS 6 (http://stackoverflow.com/questions/5178416/pip-install-lxml-error), we first need to manually install some dependencies:
-
-(py27env)[cloudera@localhost bicing-bcn]$ sudo yum install libxslt-python.x86_64 libxslt-devel.x86_64 libxslt-devel.i686 libxml2-devel.x86_64 libxml2-devel.i686 libxml2-python.x86_64
-
-    (py27env)[cloudera@localhost bicing-bcn]$ sudo pip2.7 install lxml
-
-and then 
-
-$ sudo pip2.7 install pygal
-
-- Start HBase REST server:
-
-$ hbase rest start -ro -p 9998
-
-$  curl -H "Accept: application/json" http://localhost:9998/test_hbase_py_client/john
-{"Row":[{"key":"am9obg==","Cell":[{"column":"aW5mbzphZ2U=","timestamp":1393791170961,"$":"NDI="},{"column":"dmlzaXRzOmFtYXpvbi5jb20=","timestamp":1393791171026,"$":"NQ=="},{"column":"dmlzaXRzOmdvb2dsZS5lcw==","timestamp":1393791171063,"$":"Mg=="}]}]}(py27env)[cloudera@localhost hbase_rest_charts]$ 
-
-hbase(main):002:0> scan 'test_hbase_py_client'
-ROW                                              COLUMN+CELL                                                                                                                                
- john                                            column=info:age, timestamp=1393791170961, value=42                                                                                         
- john                                            column=visits:amazon.com, timestamp=1393791171026, value=5                                                                                 
- john                                            column=visits:google.es, timestamp=1393791171063, value=2                                                                                  
- mary                                            column=info:age, timestamp=1393791170995, value=26                                                                                         
- mary                                            column=visits:amazon.com, timestamp=1393791171079, value=4                                                                                 
- mary                                            column=visits:facebook.com, timestamp=1393791171098, value=2   
-
-TODO: this is requesting some online CSS, in offline mode animation is lost and the serve
-time is slower, probably due to that. Consider downloading the CSS and adding it to the 
-application if possible. Maybe this is due to using DarkSolarizedStyle, consider dropping
-the style if this implies this kind of dependencies
+Simple charts from HBase small tables, based on the HBase REST server, Pygal, Flask and Requests
 '''
 from flask import Flask, make_response
 from flask import render_template
@@ -73,7 +29,15 @@ Example URLs supported by HBase
     curl -H "Accept: application/json" http://localhost:9998/test_hbase_py_client/john
     curl -H "Accept: application/json" http://localhost:9998/test_hbase_py_client/john/visits
     curl -H "Accept: application/json" http://localhost:9998/test_hbase_py_client/*
-    curl -H "Accept: application/json" http://localhost:9998/test_hbase_py_client/*/visits    
+    curl -H "Accept: application/json" http://localhost:9998/test_hbase_py_client/*/visits
+
+Wildcards are supported when specifying the row key, even when a family is latter specified
+
+[cloudera@localhost local]$ curl -H "Accept: application/json" http://localhost:9998/test_hbase_py_client/*/visits
+{"Row":[{"key":"am9obg==","Cell":[{"column":"dmlzaXRzOmFtYXpvbi5jb20=","timestamp":1393791171026,"$":"NQ=="},{"column":"dmlzaXRzOmdvb2dsZS5lcw==","timestamp":1393791171063,"$":"Mg=="}]},{"key":"bWFyeQ==","Cell":[{"column":"dmlzaXRzOmFtYXpvbi5jb20=","timestamp":1393791171079,"$":"NA=="},{"column":"dmlzaXRzOmZhY2Vib29rLmNvbQ==","timestamp":1393791171098,"$":"Mg=="}]}]}[cloudera@localhost local]$ 
+
+[cloudera@localhost local]$ curl -H "Accept: application/json" http://localhost:9998/test_hbase_py_client/*
+{"Row":[{"key":"am9obg==","Cell":[{"column":"aW5mbzphZ2U=","timestamp":1393791170961,"$":"NDI="},{"column":"dmlzaXRzOmFtYXpvbi5jb20=","timestamp":1393791171026,"$":"NQ=="},{"column":"dmlzaXRzOmdvb2dsZS5lcw==","timestamp":1393791171063,"$":"Mg=="}]},{"key":"bWFyeQ==","Cell":[{"column":"aW5mbzphZ2U=","timestamp":1393791170995,"$":"MjY="},{"column":"dmlzaXRzOmFtYXpvbi5jb20=","timestamp":1393791171079,"$":"NA=="},{"column":"dmlzaXRzOmZhY2Vib29rLmNvbQ==","timestamp":1393791171098,"$":"Mg=="}]}]}[cloudera@localhost local]$     
 '''
 _get_hBase_rows_format = 'http://{server}/{table}/{row_keys}/{family}'
 _get_hBase_rows_headers = {'accept': 'application/json'}
@@ -115,25 +79,6 @@ def get_hBase_rows(server, table, row_keys, family=''):
                           for column in (b64decode(cell['column']), ) 
                           for sep_idx in (column.find(':'), ) ]} 
                 for row in hbase_request.json()['Row']]
-    # FIXME delete
-    # key = b64decode(hbase_request.json()['Row'][0]['key'])
-    # row = [{'family' : column[:sep_idx], 'qual' : column[sep_idx + 1:], 
-    #   'value' :  b64decode(cell['$']), 'timestamp' : long(cell['timestamp']) }   
-    #        for cell in hbase_request.json()['Row'][0]['Cell'] 
-    #        for column in (b64decode(cell['column']), ) 
-    #        for sep_idx in (column.find(':'), ) ]
-    # return {'key' : key, 'row' : row}
-
-'''
-Wildcards are supported when specifying the row key, even when a family is latter specified
-
-[cloudera@localhost local]$ curl -H "Accept: application/json" http://localhost:9998/test_hbase_py_client/*/visits
-{"Row":[{"key":"am9obg==","Cell":[{"column":"dmlzaXRzOmFtYXpvbi5jb20=","timestamp":1393791171026,"$":"NQ=="},{"column":"dmlzaXRzOmdvb2dsZS5lcw==","timestamp":1393791171063,"$":"Mg=="}]},{"key":"bWFyeQ==","Cell":[{"column":"dmlzaXRzOmFtYXpvbi5jb20=","timestamp":1393791171079,"$":"NA=="},{"column":"dmlzaXRzOmZhY2Vib29rLmNvbQ==","timestamp":1393791171098,"$":"Mg=="}]}]}[cloudera@localhost local]$ 
-
-[cloudera@localhost local]$ curl -H "Accept: application/json" http://localhost:9998/test_hbase_py_client/*
-{"Row":[{"key":"am9obg==","Cell":[{"column":"aW5mbzphZ2U=","timestamp":1393791170961,"$":"NDI="},{"column":"dmlzaXRzOmFtYXpvbi5jb20=","timestamp":1393791171026,"$":"NQ=="},{"column":"dmlzaXRzOmdvb2dsZS5lcw==","timestamp":1393791171063,"$":"Mg=="}]},{"key":"bWFyeQ==","Cell":[{"column":"aW5mbzphZ2U=","timestamp":1393791170995,"$":"MjY="},{"column":"dmlzaXRzOmFtYXpvbi5jb20=","timestamp":1393791171079,"$":"NA=="},{"column":"dmlzaXRzOmZhY2Vib29rLmNvbQ==","timestamp":1393791171098,"$":"Mg=="}]}]}[cloudera@localhost local]$ 
-
-'''
 
 
 _supported_chart_types['bar'] = '/hbase/svg/bar/{server}/{table}/{title}/{family}/{row_keys}'
@@ -186,32 +131,13 @@ def barchart_for_hbase_row(server, table, row_key, family, refresh):
     return render_template('chart.html', refresh_rate=refresh, title="HBase Barchart",
                             chart_src=_svg_barchart_for_hbase_row_url_format.format(server=server, table=table, row_key=row_key, family=family))
 
-'''
-http://stackoverflow.com/questions/18602276/flask-urls-w-variable-parameters
-
-TODO: s2 is the proposed format for a composed chart, using bar for barchart, pie for piechart, etc, 
-covering all the chart types in pygal
-
->>> s
-'/hbase/charts/barchart/<server>/<table>/<row_key>/<family>/<int:refresh>'
-
-s_ex = 'http://localhost:9999/hbase/charts/barchart/localhost:9998/test_hbase_py_client/john/visits/'
->>> s2 = '/hbase/charts/<server>/<table>/bar/cols/2/<row_key>/<family>/pie/<row_key>/<family>/refresh/5'
-s2b = '/hbase/charts/<server>/<table>/cols/2/bar/<row_key>/<family>/pie/<row_key>/<family>/refresh/<int:refresh>'
-
-s2_ex = '/hbase/charts/localhost:9998/test_hbase_py_client/cols/2/bar/john/visits/pie/mary/visits/refresh/10'
-
->>> re.match('.*(?=refresh)', "bar/john/visits/pie/mary/visits/refresh/10").group(0)
-'bar/john/visits/pie/mary/visits/'
->>> re.match('.*(?=/refresh)', "bar/john/visits/pie/mary/visits/refresh/10").group(0)
-'bar/john/visits/pie/mary/visits' <-- suena mejor
-'''
-
 class ChartsSpecsConverter(BaseConverter):
+    '''
+    Custom URL converter for the chart specifications
+    '''
     def __init__(self, url_map):
         super(ChartsSpecsConverter, self).__init__(url_map)
         self.regex =  '(?:.*(?=/keys))'
-        # self.regex =  '(?:.*(?=keys))'
 
     def to_python(self, value):
         '''
@@ -281,22 +207,11 @@ def charts_table(server, table, table_width, num_cols, refresh, charts, row_keys
     return render_template(_charts_table_template, table_width=table_width, refresh_rate=refresh, 
                            title="HBase Chart", chart_src_rows=chart_src_rows)
 
-# _supported_chart_types['bar'] = '/hbase/svg/bar/{server}/{table}/{title}/{family}/{row_keys}'
-# return [{'chart_type' : spec[0], 'title' : spec[1], 'family' : spec[2], 'row_key' : spec[3]} for spec in specs ]
-
-'''
-Real TODOs: 
-    - TODO: THIS IS THE MOST USEFUL, add an additional routing where row_keys is not specified that performs a full scan of the
-    table, this is obviously only useful when the table contains already aggregated data
-
-    - TODO: center charts in its table cell
-'''
-
-
 if __name__ == '__main__':
     import sys
     print 'Usage: <port>'
     port = int(sys.argv[1])
+    
     # FIXME delete
     print 'Sample URLs:'
     print 'http://localhost:9999/hbase/svg/bar/localhost:9998/test_hbase_py_client/Sites%20Visited/visits/john/mary'
@@ -305,5 +220,4 @@ if __name__ == '__main__':
     print 'http://localhost:9999/hbase/charts/localhost:9998/test_hbase_py_client/width/1500/cols/2/refresh/500/bar/Sites%20Visited/visits/bar/Info/info/keys/*'
     print 'http://localhost:9999/hbase/charts/localhost:9998/test_hbase_py_client/width/850/cols/1/refresh/5/bar/Sites%20Visited/visits/bar/Info/info/keys/*'
 
-    # print 'Go to http://127.0.0.1:{port}/barchart.html, http://127.0.0.1:{port}/barchart.png, http://127.0.0.1:{port}/barchart.svg'.format(port=port)
     app.run(debug=True, port=port)
