@@ -1,0 +1,240 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-
+  instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-
+  4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>com.github.juanrh.data42</groupId>
+	<artifactId>twitter-stream</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<packaging>jar</packaging>
+	<name>twitter-stream</name>
+	<!-- mvn dependency:tree -Dverbose  -->
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<version-slf4j>1.7.7</version-slf4j>		
+    	<!-- <hadoop.version>2.0.0-mr1-cdh4.4.0</hadoop.version> -->
+    <!-- 	<hadoop.major.version>2.0</hadoop.major.version> -->
+    	<!-- For YARN mode -->
+    	<hadoop-version>2.0.0-cdh4.4.0</hadoop-version>
+    	<twitter4j.version>4.0.2</twitter4j.version>
+    	<spark.version>1.0.1</spark.version>
+	</properties>
+	<repositories>
+		<repository>
+			<id>github-releases</id>
+			<url>http://oss.sonatype.org/content/repositories/github-releases/
+			</url>
+		</repository>
+		 <repository>
+      		<id>atlassian-public</id>
+      		<url>https://maven.atlassian.com/content/groups/public/</url>
+    	</repository>
+   		<repository>
+      		<id>cloudera</id>
+      		<url>https://repository.cloudera.com/artifactory/cloudera-repos/</url>
+    	</repository>
+	</repositories>
+	<dependencies>
+		<dependency>
+			<groupId>org.apache.spark</groupId>
+			<artifactId>spark-core_2.10</artifactId>
+			<version>${spark.version}</version>            
+		</dependency>
+		<dependency>
+			<groupId>org.apache.spark</groupId>
+			<artifactId>spark-streaming_2.10</artifactId>
+			<version>${spark.version}</version>            
+		</dependency>
+		<dependency>
+			<groupId>org.apache.spark</groupId>
+			<artifactId>spark-streaming-twitter_2.10</artifactId>
+			<version>${spark.version}</version>            
+		</dependency>
+		<!-- Apache commons property files -->
+		<dependency>
+			<groupId>commons-configuration</groupId>
+			<artifactId>commons-configuration</artifactId>
+			<version>1.10</version>
+		</dependency>
+		<dependency>
+			<groupId>commons-lang</groupId>
+			<artifactId>commons-lang</artifactId>
+			<version>2.6</version>
+		</dependency>   
+		<dependency>
+  			<groupId>org.apache.httpcomponents</groupId>
+  			<artifactId>fluent-hc</artifactId>
+  			<!-- <version>4.3.3</version> -->
+  			<version>4.3.2</version>
+		</dependency>
+		<!-- httpclient is needed as an explicit dependency for fluent-hc
+		version 4.3.3, but not for version 4.3.3  --> 
+		<dependency>
+    		<groupId>org.apache.httpcomponents</groupId>
+    		<artifactId>httpclient</artifactId>
+    		<!-- <version>4.3.3</version> -->
+    		<version>4.3.2</version>
+		</dependency>
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>4.8.2</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.google.guava</groupId>
+			<artifactId>guava</artifactId>
+				<version>17.0</version> 
+ 		</dependency>
+		<dependency>
+      		<groupId>com.google.auto.value</groupId>
+      		<artifactId>auto-value</artifactId>
+      		<!-- https://github.com/google/auto/tree/master/value
+      		"Of course, please upgrade to the final 1.0 release once it is available (likely in April 2014)" -->
+      		<version>1.0-rc1</version>
+      		<scope>provided</scope>
+    	</dependency>
+    	 <dependency>
+        	<groupId>com.atlassian.fugue</groupId>
+        	<artifactId>fugue</artifactId>
+        	<version>2.1.0</version>
+    	</dependency>
+    	<dependency>
+			<groupId>org.apache.phoenix</groupId>
+			<artifactId>phoenix-core</artifactId>
+			<version>3.0.0-incubating</version>
+		</dependency>
+		<!-- WARNING: do NOT include twitter4j or it might create NoClassDefFoundError's 
+		due to dependencies crash -->
+		<!-- <dependency>
+           <groupId>org.twitter4j</groupId>
+           <artifactId>twitter4j-core</artifactId>
+           <version>${twitter4j.version}</version>
+       </dependency> -->
+		
+		<!--  The exclusion prevents a "SLF4J: See http://www.slf4j.org/codes.html#multiple_bindings for an explanation. -->
+	   	<dependency>
+    		<groupId>org.apache.hadoop</groupId>
+    		<artifactId>hadoop-client</artifactId>
+    		<version>2.0.0-mr1-cdh4.4.0</version>
+    		<!-- <version>2.0.0-cdh4.4.0</version> -->
+    		<!-- <version>2.0.0</version> -->
+    			<exclusions>
+					<exclusion>
+					<groupId>org.slf4j</groupId>
+					<artifactId>slf4j-log4j12</artifactId>
+					</exclusion>
+				</exclusions>
+  		</dependency> 
+  		<dependency>
+    		<groupId>org.apache.hadoop</groupId>
+    		<artifactId>hadoop-common</artifactId>
+    		<version>2.0.0-cdh4.4.0</version>
+    		<!-- <version>2.0.0-cdh4.4.0</version> -->
+    		<!-- <version>2.0.0</version> -->
+    			<exclusions>
+					<exclusion>
+					<groupId>org.slf4j</groupId>
+					<artifactId>slf4j-log4j12</artifactId>
+					</exclusion>
+				</exclusions>
+  		</dependency> 
+  		<dependency>
+    		<groupId>org.reflections</groupId>
+    		<artifactId>reflections</artifactId>
+    		<version>0.9.9-RC2</version>
+		</dependency>
+		<dependency>
+  			<groupId>org.apache.metamodel</groupId>
+  			<artifactId>MetaModel-full</artifactId>
+  			<version>4.1.0-RC1-incubating</version>
+		</dependency>
+	</dependencies>
+	<build>
+		<resources>
+			<resource>
+				<directory>${basedir}/src/main/resources</directory>
+			</resource>
+		</resources>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>2.4</version>
+				<configuration>
+					<source>1.6</source>
+					<target>1.6</target>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-shade-plugin</artifactId>
+				<version>2.3</version>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>shade</goal>
+						</goals>
+						<configuration>
+							<transformers>
+                 				<!--  To fix problem with META-INFO/services/org.apache.hadoop.fs.FileSystem
+                 				that leads to "No FileSystem for scheme: hdfs"
+                 				 -->
+                 				<transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
+								</transformers>
+								<!-- Avoid Exception in thread "main" java.lang.SecurityException: Invalid signature file digest for Manifest main attributes
+								when sending to YARN -->
+								<filters>
+									<filter>
+										<artifact>*:*</artifact>
+										<excludes>
+											<exclude>META-INF/*.SF</exclude>
+											<exclude>META-INF/*.DSA</exclude>
+											<exclude>META-INF/*.RSA</exclude>
+										</excludes>
+									</filter>
+								</filters>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+		<pluginManagement>
+			<plugins>
+				<!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself.-->
+				<plugin>
+					<groupId>org.eclipse.m2e</groupId>
+					<artifactId>lifecycle-mapping</artifactId>
+					<version>1.0.0</version>
+					<configuration>
+						<lifecycleMappingMetadata>
+							<pluginExecutions>
+								<pluginExecution>
+									<pluginExecutionFilter>
+										<groupId>
+											com.theoryinpractise
+										</groupId>
+										<artifactId>
+											clojure-maven-plugin
+										</artifactId>
+										<versionRange>
+											[1.3.8,)
+										</versionRange>
+										<goals>
+											<goal>compile</goal>
+										</goals>
+									</pluginExecutionFilter>
+									<action>
+										<ignore></ignore>
+									</action>
+								</pluginExecution>
+							</pluginExecutions>
+						</lifecycleMappingMetadata>
+					</configuration>
+				</plugin>
+			</plugins>
+		</pluginManagement>
+	</build>
+</project>
+
