@@ -9,21 +9,18 @@
 </head>
 
 <body>
-    <!-- http://pygal.org/web/ -->
-    <div align="center">
-        <table border=1 style="width:{{table_width}}px">
-            {% for row in rows %}
-            <tr> 
-                {% for chart_src in row %}
-                <td>
-                <figure>
-                    <embed type="image/svg+xml" src="{{chart_src}}" width="600" />
+    <table align="center" border=0 style="width:{{table_width}}px">
+        {% for row in chart_src_rows %}
+        <tr> 
+           {% for chart_src in row %}
+            <td text-align="center">
+                <figure style="text-align:center">
+                    <embed type="image/svg+xml" src="{{chart_src}}"/>
                 </figure>
-                </td>
-                {% endfor %}
-            </tr>
+            </td>
             {% endfor %}
-        </table>
-    </div>
+        </tr>
+        {% endfor %}
+    </table>
 </body>
 </html>
