@@ -72,6 +72,8 @@ def get_hBase_rows(server, table, row_keys, family=''):
                                                                   headers=_get_hBase_rows_headers)
     except:
         return None
+    if hbase_request.status_code == 404:
+        return []
     return [{'key' : b64decode(row['key']), 
              'row' : [{'family' : column[:sep_idx], 'qual' : column[sep_idx + 1:], 
                        'value' :  b64decode(cell['$']), 'timestamp' : long(cell['timestamp']) }   
@@ -118,18 +120,6 @@ def svg_barchart_for_hbase_rows(server, table, title, family, row_keys):
         chart.add(key, [ qual_vals.get(label) for label in x_labels ])
     # return as a Flask response
     return chart.render_response()
-
-_svg_barchart_for_hbase_row_url_format = '/hbase/svg/barchart/{server}/{table}/{row_key}/{family}'
-@app.route('/hbase/charts/barchart/<server>/<table>/<row_key>/<family>/', defaults={'refresh' : 5})
-@app.route('/hbase/charts/barchart/<server>/<table>/<row_key>/<family>/<int:refresh>')
-def barchart_for_hbase_row(server, table, row_key, family, refresh):
-    ''' 
-    By default jinja2 will look for templates at the templates folder 
-    in the root of the application.
-    By using the template be get autorefresh by using a <meta> header
-    '''
-    return render_template('chart.html', refresh_rate=refresh, title="HBase Barchart",
-                            chart_src=_svg_barchart_for_hbase_row_url_format.format(server=server, table=table, row_key=row_key, family=family))
 
 class ChartsSpecsConverter(BaseConverter):
     '''
@@ -211,7 +201,7 @@ if __name__ == '__main__':
     import sys
     print 'Usage: <port>'
     port = int(sys.argv[1])
-    
+
     # FIXME delete
     print 'Sample URLs:'
     print 'http://localhost:9999/hbase/svg/bar/localhost:9998/test_hbase_py_client/Sites%20Visited/visits/john/mary'
