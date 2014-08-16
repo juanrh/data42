@@ -54,7 +54,9 @@ Finally, in order to check that everything is working ok, open http://localhost:
 
 
 # TODO
-TODO: this is requesting some online CSS, in offline mode animation is lost and the serve
+ - Encoding of values is HBase: currently the code assumes that cell values have been stored as strings in HBase. Support should be added for values written with Bytes.toBytes(<numeric value type>).
+ - Other charts: adding several other charts supported by pygal like pie charts should be very easy as the data model is the same as that for bar charts
+ - CSS's: this is requesting some online CSS, in offline mode animation is lost and the serve
 time is slower, probably due to that. Consider downloading the CSS and adding it to the 
 application if possible. Maybe this is due to using DarkSolarizedStyle, consider dropping
 the style if this implies this kind of dependencies
