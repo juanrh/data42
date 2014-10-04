@@ -10,11 +10,12 @@ public class Application {
 		Person person = new Person();
 		System.out.println(person.toString());
 		
-		person.setAge(33);
-		person.setName("Juan");
+		person.setAge(33).setFirstName("Juan");
 		System.out.println(person.toString());
 		
-		Configuration conf = new MapConfiguration(ImmutableMap.of("AGE", 32));
+		Configuration conf = new MapConfiguration(ImmutableMap.of(
+				Person.Conf.AGE, 32, 
+				Person.Conf.FIRST_NAME, "Juan 2013"));
 		Configured.Utils.loadConf(conf, person);
 		System.out.println(person.toString());
 	}

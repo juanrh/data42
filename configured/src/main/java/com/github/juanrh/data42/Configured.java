@@ -9,7 +9,9 @@ import org.apache.commons.lang.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public interface Configured<Keys extends Enum<?>> {
+import com.google.common.base.CaseFormat;
+
+public interface Configured {
 	public static class Utils {
 		private static final Logger LOGGER = LoggerFactory.getLogger(Configured.class);
 		/**
@@ -17,22 +19,29 @@ public interface Configured<Keys extends Enum<?>> {
 		 * those keys that appear in conf and that have been annotated
 		 * in the class for configured by using @Config
 		 * */
-		public static <Keys extends Enum<?>>
-		   void loadConf(Configuration conf, Configured<Keys> configured) {
+		public static void loadConf(Configuration conf, Object configured) {
+			CaseFormat lowerCamelFormat = CaseFormat.valueOf(CaseFormat.LOWER_CAMEL.name());
+			CaseFormat upperUnderscoreFormat = CaseFormat.valueOf(CaseFormat.UPPER_UNDERSCORE.name());
+			
 			Class<?> configuredClass = configured.getClass();
 			Field[] fields = configuredClass.getDeclaredFields();
 			for (Field field : fields) {
 				if (field.isAnnotationPresent(Config.class)) {
 					Config confAnnotation = field.getAnnotation(Config.class);
-					// FIXME: case conversions
-					if (conf.containsKey(confAnnotation.value())) {
+					String key = confAnnotation.value();
+					if (key.equals("")) {
+						// use the key name converted to THIS_FORMAT as key
+						// NOTE: this only works for fields in lower CamelCase
+						key = lowerCamelFormat.to(upperUnderscoreFormat, field.getName()); 
+					}
+				
+					if (conf.containsKey(key)) {
 						try {
-							// setAge
 							String methodName = "set" + 
 									field.getName().substring(0, 1).toUpperCase() +
 									field.getName().substring(1); 						
 							Method setter = configuredClass.getMethod(methodName, field.getType());
-							setter.invoke(configured, conf.getProperty(confAnnotation.value()));
+							setter.invoke(configured, conf.getProperty(key));
 						} catch (NoSuchMethodException | SecurityException |
 								 IllegalAccessException | IllegalArgumentException | 
 								 InvocationTargetException e) {
@@ -40,26 +49,11 @@ public interface Configured<Keys extends Enum<?>> {
 									configured, conf, ExceptionUtils.getFullStackTrace(e));
 							throw new RuntimeException(e);
 						}
-					}
-					
-//					if (confAnnotation.value().equals(field.getName().toUpperCase())) {
-//					}
+					}					
 				}
 			}
-			
-			// configuredClass.getAnnotations();
-			
 		}
 		
 		// http://docs.guava-libraries.googlecode.com/git/javadoc/com/google/common/base/CaseFormat.html
-		/*
-		public static <V> V loadConf(Configuration conf) {
-			return null; // FIXME
-		}*/
 	}
-	
-
-//	public @interface Copyright {
-//		   String info() default "";
-//		}
 }
