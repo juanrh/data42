@@ -9,8 +9,6 @@ import org.apache.commons.lang.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.base.CaseFormat;
-
 public interface Configured {
 	public static class Utils {
 		private static final Logger LOGGER = LoggerFactory.getLogger(Configured.class);
@@ -20,20 +18,26 @@ public interface Configured {
 		 * in the class for configured by using @Config
 		 * */
 		public static void loadConf(Configuration conf, Object configured) {
-			CaseFormat lowerCamelFormat = CaseFormat.valueOf(CaseFormat.LOWER_CAMEL.name());
-			CaseFormat upperUnderscoreFormat = CaseFormat.valueOf(CaseFormat.UPPER_UNDERSCORE.name());
+			// CaseFormat lowerCamelFormat = CaseFormat.valueOf(CaseFormat.LOWER_CAMEL.name());
+			// CaseFormat upperUnderscoreFormat = CaseFormat.valueOf(CaseFormat.UPPER_UNDERSCORE.name());
 			
 			Class<?> configuredClass = configured.getClass();
 			Field[] fields = configuredClass.getDeclaredFields();
 			for (Field field : fields) {
 				if (field.isAnnotationPresent(Config.class)) {
 					Config confAnnotation = field.getAnnotation(Config.class);
+					String key = confAnnotation.key(); 
+					/*
+					 * Forcing the use of explicit keys for @Config we get: 1) more readable
+					 * code, as it is more explicit; 2) no need to use naming convention with
+					 * CamelCase or upper underscore, and with a synchronization of constant
+					 * names and member variable names
 					String key = confAnnotation.value();
 					if (key.equals("")) {
 						// use the key name converted to THIS_FORMAT as key
 						// NOTE: this only works for fields in lower CamelCase
 						key = lowerCamelFormat.to(upperUnderscoreFormat, field.getName()); 
-					}
+					}*/
 				
 					if (conf.containsKey(key)) {
 						try {

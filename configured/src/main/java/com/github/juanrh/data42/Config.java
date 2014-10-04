@@ -13,5 +13,6 @@ public @interface Config {
 	 * entry. Using the default "" implies the name of the field converted to
 	 * the usual convention with uppercase and _ will be used as key  
 	 */
-	 String value() default "";
+	 // String value() default "";
+	String key(); 
 }

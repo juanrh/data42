@@ -50,9 +50,9 @@ public class Person  {
 	}
 	
 	// @Setter @Config(Conf.AGE) // same effect as below
-	@Setter @Config
+	@Setter @Config(key=Conf.AGE)
 	private int age;
 	
-	@Setter @Config
+	@Setter @Config(key=Conf.FIRST_NAME)
 	private String firstName;
 }

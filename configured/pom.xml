@@ -46,14 +46,6 @@
 			<artifactId>guava</artifactId>
 				<version>17.0</version> 
  		</dependency>
-		<dependency>
-      		<groupId>com.google.auto.value</groupId>
-      		<artifactId>auto-value</artifactId>
-      		<!-- https://github.com/google/auto/tree/master/value
-      		"Of course, please upgrade to the final 1.0 release once it is available (likely in April 2014)" -->
-      		<version>1.0-rc1</version>
-      		<scope>provided</scope>
-    	</dependency>
      	 <dependency>
         	<groupId>com.atlassian.fugue</groupId>
         	<artifactId>fugue</artifactId>
