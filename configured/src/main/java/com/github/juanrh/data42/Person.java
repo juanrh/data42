@@ -10,7 +10,7 @@ import lombok.experimental.Accessors;
  * http://projectlombok.org/features/experimental/Accessors.html
  */
 @ToString @Accessors(chain=true)
-public class Person  {
+public class Person implements Configured<Person.Conf> {
 	/*
 	 * Cannot use an enum for the arguments of an annotation ("The value 
 	 * for annotation attribute Config.value must be a constant expression"), 
@@ -45,11 +45,15 @@ public class Person  {
 	 * check of this contraints
 	 * */
 	public static class Conf {
-		public static final String FIRST_NAME= "FIRST_NAME";
+		public static final String FIRST_NAME = "FIRST_NAME"; //;  "FITNAME";
 		public static final String AGE = "AGE"; 
+		/* This check has no effect, probably because the members to be 
+		 * checked are not constructed yet when the check is executed 
+		static {
+			ConfigKeys.checkKeyValues(Person.Conf.class);
+		}*/
 	}
-	
-	// @Setter @Config(Conf.AGE) // same effect as below
+		
 	@Setter @Config(key=Conf.AGE)
 	private int age;
 	

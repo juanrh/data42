@@ -10,9 +10,8 @@ import java.lang.annotation.Target;
 public @interface Config {
 	/**
 	 * String corresponding to a org.apache.commons.configuration.Configuration 
-	 * entry. Using the default "" implies the name of the field converted to
-	 * the usual convention with uppercase and _ will be used as key  
+	 * entry. No default is allowed in order to get a more explicit code that
+	 * doesn't rely on naming conventions
 	 */
-	 // String value() default "";
 	String key(); 
 }
