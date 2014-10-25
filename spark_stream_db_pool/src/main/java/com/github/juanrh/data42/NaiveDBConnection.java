@@ -19,6 +19,10 @@ import com.mongodb.BasicDBObject;
 import com.mongodb.DBCollection;
 import com.mongodb.MongoClient;
 
+/**
+* export YARN_CONF_DIR=/etc/hadoop/conf
+* spark-submit --class com.github.juanrh.data42 --master yarn-cluster --num-executors 2 --driver-memory 512m --executor-memory 512m --executor-cores 2 target/spark_stream_db_pool-0.0.1-SNAPSHOT.jar
+* */
 public class NaiveDBConnection {
 	private static final Logger LOGGER = LoggerFactory.getLogger(NaiveDBConnection.class); 
 

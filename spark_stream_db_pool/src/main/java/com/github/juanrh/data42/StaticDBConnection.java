@@ -32,6 +32,13 @@ public class StaticDBConnection {
 			try {
 				LOGGER.info("Opening connection to MongoDB");
 				mongoClient = new MongoClient(host, port);
+				Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+					
+					@Override
+					public void run() {
+						closeConnection();					
+					}
+				}));
 			} catch (UnknownHostException uhe) {
 				String msg = "UnknownHostException while connection to MongoDB "
 						+ "for host " + host + " and port " + port; 
@@ -52,14 +59,13 @@ public class StaticDBConnection {
 	
 	private static void closeConnection() {
 		if (mongoClient != null) {
-
 			LOGGER.info("Closing connection to MongoDB");
 			mongoClient.close();
 		}
 	}
 	
 	public static void main (String [] args) {
-		String appMaster = "yarn-cluster"; // "local[3]";
+		String appMaster = "local[3]";
 		
 		final String host = "localhost";
 		final int port = 27017; 
@@ -68,7 +74,7 @@ public class StaticDBConnection {
 		
 		SparkConf conf = new SparkConf()
 			.setAppName(StaticDBConnection.class.getName()).setMaster(appMaster);
-		JavaStreamingContext jssc = new JavaStreamingContext(conf, new Duration(100));
+		final JavaStreamingContext jssc = new JavaStreamingContext(conf, new Duration(100));
 		
 		List<BasicDBObject> persons = Lists.newArrayList(
 				new BasicDBObject("name", "pepe").append("age", 20),
@@ -115,7 +121,23 @@ public class StaticDBConnection {
 		personsLoopStream.print(); 
 		
 		jssc.start();
-		jssc.awaitTermination();
+		new Thread(new  Runnable() {
+			
+			@Override
+			public void run() {
+				// stop stream after 3 seconds
+				try {
+					Thread.sleep(3000);
+				} catch (InterruptedException ie) {
+					throw new RuntimeException(ie);
+				}
+				jssc.stop(true);
+			}
+		}).start();		
+
+		jssc.awaitTermination(); 
+		
+		System.out.println("\n\nProgram stopped");
 		
 		/*
 		 * This call has no effect, as it will be performed in the driver. The connections 
