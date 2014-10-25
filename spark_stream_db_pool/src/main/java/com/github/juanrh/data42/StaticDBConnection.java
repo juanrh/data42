@@ -59,7 +59,7 @@ public class StaticDBConnection {
 	}
 	
 	public static void main (String [] args) {
-		String appMaster = "local[3]";
+		String appMaster = "yarn-cluster"; // "local[3]";
 		
 		final String host = "localhost";
 		final int port = 27017; 
@@ -116,7 +116,13 @@ public class StaticDBConnection {
 		
 		jssc.start();
 		jssc.awaitTermination();
-		closeConnection();
+		
+		/*
+		 * This call has no effect, as it will be performed in the driver. The connections 
+		 * in the executors will be closed when the corresponding JVM are destroyed after
+		 * the Spark context is stopped
+		 * */
+		// closeConnection();
 	}
 
 }
