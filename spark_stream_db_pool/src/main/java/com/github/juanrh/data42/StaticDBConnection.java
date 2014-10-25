@@ -57,10 +57,11 @@ public class StaticDBConnection {
 		return coll; 
 	}
 	
-	private static void closeConnection() {
+	private static synchronized void closeConnection() {
 		if (mongoClient != null) {
 			LOGGER.info("Closing connection to MongoDB");
 			mongoClient.close();
+			mongoClient = null; 
 		}
 	}
 	
@@ -125,9 +126,9 @@ public class StaticDBConnection {
 			
 			@Override
 			public void run() {
-				// stop stream after 3 seconds
+				// stop stream after 10 seconds
 				try {
-					Thread.sleep(3000);
+					Thread.sleep(10000);
 				} catch (InterruptedException ie) {
 					throw new RuntimeException(ie);
 				}
