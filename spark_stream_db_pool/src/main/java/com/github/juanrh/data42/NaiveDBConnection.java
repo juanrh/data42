@@ -21,36 +21,7 @@ import com.mongodb.MongoClient;
 
 public class NaiveDBConnection {
 	private static final Logger LOGGER = LoggerFactory.getLogger(NaiveDBConnection.class); 
-			
-//	private MongoClient mongoClient = null;
-//	private DB db = null;
-//	private DBCollection coll = null;
-//
-//	private void closeConn() {
-//		if (this.mongoClient != null) {
-//			LOGGER.info("Closing connection to MongoDB");
-//			this.mongoClient.close();
-//			this.mongoClient = null;
-//		}
-//	}
-//	
-//	private DBCollection getCollection(boolean forceReconnect) {
-//		if (this.mongoClient == null || this.coll == null || forceReconnect) {
-//			LOGGER.info("Connecting to MongoDB");
-//			try {
-//				this.closeConn();
-//				this.mongoClient = new MongoClient(host, port);
-//			} catch (Exception e) {
-//				throw new RuntimeException(e);
-//			}
-//			
-//			this.db = mongoClient.getDB(database);
-//			this.coll = this.db.getCollection(collection);
-//		}
-//
-//		return this.coll;
-//	}
-	
+
 	public static void main (String [] args) {
 		String appMaster = "local[3]";
 		
