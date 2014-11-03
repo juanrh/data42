@@ -21,6 +21,12 @@ import com.mongodb.BasicDBObject;
 import com.mongodb.DBCollection;
 import com.mongodb.MongoClient;
 
+/**
+ * OK for 6GB Sandbox
+ * 
+ * export YARN_CONF_DIR=/etc/hadoop/conf
+ * spark-submit --class com.github.juanrh.data42.StaticDBConnection --master yarn-cluster --num-executors 2 --driver-memory 512m --executor-memory 512m --executor-cores 2 target/spark_stream_db_pool-0.0.1-SNAPSHOT.jar
+ * */
 public class StaticDBConnection {
 	private static final Logger LOGGER = LoggerFactory.getLogger(StaticDBConnection.class); 
 
@@ -66,7 +72,7 @@ public class StaticDBConnection {
 	}
 	
 	public static void main (String [] args) {
-		String appMaster = "local[3]";
+		String appMaster = "yarn-cluster";//  "local[3]";
 		
 		final String host = "localhost";
 		final int port = 27017; 
