@@ -49,6 +49,7 @@ echo
 echo "Simple dry run of the Phoenix installation after restart"
 echo "Create a table WEB_STAT with"
 echo 'sqlline.py localhost:2181:/hbase-unsecure ${PHOENIX_TRG_DIR}/${PHOENIX_BINARY}/examples/WEB_STAT.sql'
+# http://phoenix.apache.org/bulk_dataload.html
 echo "Add data to WEB_STAT with"
 echo 'psql.py -t WEB_STAT  localhost:2181:/hbase-unsecure ${PHOENIX_TRG_DIR}/${PHOENIX_BINARY}/examples/WEB_STAT.csv'
 echo "Now open sqlline with 'sqlline.py localhost:2181:/hbase-unsecure' and run the query 'select DOMAIN, COUNT(*) as C from WEB_STAT group by DOMAIN;'"
