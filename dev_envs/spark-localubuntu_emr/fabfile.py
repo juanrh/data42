@@ -4,11 +4,15 @@
 Local devel environment for Spark under XUbuntu 14.10
 '''
 
-from fabric.api import local, task, lcd
+from fabric.api import local, task, lcd, env
 import os
 
 _install_root = "/opt"
 _bashrc = os.path.join(os.environ["HOME"], ".bashrc")
+
+# Store here string messages to show at the end of the execution
+env.final_msgs = []
+
 ###################
 # Utils
 ###################
@@ -51,6 +55,14 @@ def append_to_bashrc(line):
 def print_title(title):
     print title
     print '-' * len(title)
+
+def add_final_msg(msg):
+    env.final_msgs.append(msg)
+
+def print_final_msgs():
+    print '_' * 20
+    print 
+    print os.linesep.join(env.final_msgs)
 
 ###################
 # Tasks
@@ -102,6 +114,31 @@ def install_java7():
         local("sudo rm -f " + java_tgz_file)
     local('java -version')
 
+_zookeeper_url = "http://ftp.cixug.es/apache/zookeeper/stable/zookeeper-3.4.6.tar.gz"
+@task 
+def install_zookeeper(): 
+    '''
+    Installs a single machine zookeeper cluster for local execution
+
+    In http://docs.hortonworks.com/HDPDocuments/HDP2/HDP-2.1.2-Win/bk_releasenotes_HDP-Win/content/ch_relnotes-hdp-2.1.1-product.html we can see HDP 2.1 uses zookeeper 3.4.5. I have only managed to find zookeeper 3.4-6 at http://zookeeper.apache.org/releases.html#download, marked as the stable version of zookeeper. 
+    This code is based on the quickstart guide at http://zookeeper.apache.org/doc/r3.4.5/zookeeperStarted.html#sc_InstallingSingleMode
+    '''
+    print_title("Installing Zookeeper in local mode")
+    zk_root = os.path.join(_install_root, "zookeeper")
+    create_public_dir(zk_root)
+    create_public_dir("/var/lib/zookeeper")
+    with lcd(zk_root):
+        zk_tgz_file = download_and_uncompress(_zookeeper_url)
+        zk_dir = get_child_name_with_prefix("zookeeper")
+        zk_conf_file = os.path.join(zk_dir, "conf", "zoo.cfg")
+        local("echo 'tickTime=2000' >> " + zk_conf_file)
+        local("echo 'dataDir=/var/lib/zookeeper' >> " + zk_conf_file)
+        local("echo 'clientPort=2181' >> " + zk_conf_file)
+        local("sudo rm -f " + zk_tgz_file)
+    zk_dir_abs = os.path.join(zk_root, zk_dir)
+    add_final_msg("Start Zookeeper with " + os.path.join(zk_dir_abs, "bin", "zkServer.sh") + " start") 
+    add_final_msg("Test the Zookeeper installation with " + os.path.join(zk_dir_abs, "bin", "zkCli.sh") + ", executing 'ls /'")
+
 @task
 def install_devenv():
     '''
@@ -110,3 +147,7 @@ def install_devenv():
     print "Installing the development environment"
     install_maven3()
     install_java7()
+    install_zookeeper()
+
+    add_final_msg("use setup_local_services.sh to start and stop the local versions of the services")
+    print_final_msgs()
