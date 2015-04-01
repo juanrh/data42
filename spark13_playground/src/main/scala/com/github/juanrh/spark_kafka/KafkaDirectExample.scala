@@ -20,21 +20,6 @@ import org.apache.spark.streaming.dstream.InputDStream
 object KafkaDirectExample extends App {
   case class KeyValOffset[K, V](key: K, value : V, offset : Long) extends Serializable 
     
-  // Create Spark Streaming context
-  val master = "local[3]"
-  val batchDuration = Seconds(1)
-  val conf = new SparkConf().setMaster(master).setAppName("KafkaDirectExample")
-  val ssc : StreamingContext = new StreamingContext(conf, batchDuration)
-  
-  // Connect to a Kafka topic for reading
-  val topic = "topic2"
-  val seedKafkaBroker = "localhost" // "192.168.0.203"
-  val kafkaParams : Map[String, String] = Map("metadata.broker.list" -> (seedKafkaBroker + ":9092"))
-  
-  val kafkaInputStream : InputDStream[(String, String)] = 
-    KafkaUtils.createDirectStream[String, String, StringDecoder, StringDecoder](ssc, kafkaParams, Set(topic))
-  
-    
   /*
    * From https://cwiki.apache.org/confluence/display/KAFKA/0.8.0+SimpleConsumer+Example
    * 
@@ -51,9 +36,9 @@ object KafkaDirectExample extends App {
     * */
   // find the partitions for the topic: following fragments of findLeader() in https://cwiki.apache.org/confluence/display/KAFKA/0.8.0+SimpleConsumer+Example
   //SimpleConsumer(host: String, port: Int, soTimeout: Int, bufferSize: Int, clientId: String)
-   val partitionIds = {
-	  val kafkaConsumer = new SimpleConsumer(seedKafkaBroker, 9092, 100000, 64 * 1024, "KafkaDirectExample")
-	  val req : TopicMetadataRequest = new TopicMetadataRequest(List(topic))
+  
+  def getPartitionIdsForTopic(kafkaConsumer : SimpleConsumer, topic : String) : Seq[Int] = {
+    val req : TopicMetadataRequest = new TopicMetadataRequest(List(topic))
 	  val resp = kafkaConsumer.send(req)
 	  // TODO: convert in a comprehension returning the list of partition ids
 	  for (topicMetadata <- resp.topicsMetadata) {
@@ -61,8 +46,9 @@ object KafkaDirectExample extends App {
 	      print(partitionMetadata.partitionId)
 	    }
 	  }
-	  ???
-   }
+	???
+  }
+
   /*
    * List<String> topics = Collections.singletonList(a_topic);
                 TopicMetadataRequest req = new TopicMetadataRequest(topics);
@@ -79,21 +65,38 @@ object KafkaDirectExample extends App {
                     }
                 }
    * */
-   // TODO: define fromOffsets with a Map comprehension from the topic and each of its partitions, 
-   // to OffsetRequest.LatestTime
-    OffsetRequest.LatestTime
+  
+  // Create Spark Streaming context
+  val master = "local[3]"
+  val batchDuration = Seconds(1)
+  val conf = new SparkConf().setMaster(master).setAppName("KafkaDirectExample")
+  val ssc : StreamingContext = new StreamingContext(conf, batchDuration)
+  
+  // Connect to a Kafka topic for reading
+  val topic = "topic"
+  val seedKafkaBroker = "localhost" 
+  val kafkaParams : Map[String, String] = Map("metadata.broker.list" -> (seedKafkaBroker + ":9092"))
+  
+  val kafkaInputStream : InputDStream[(String, String)] = 
+    KafkaUtils.createDirectStream[String, String, StringDecoder, StringDecoder](ssc, kafkaParams, Set(topic))
+  
+   /*
+  val kafkaConsumer = new SimpleConsumer(seedKafkaBroker, 9092, 100000, 64 * 1024, "KafkaDirectExample")
+  val partitionIds = getPartitionIdsForTopic(kafkaConsumer, topic)
+  // TODO: define fromOffsets with a Map comprehension from the topic and each of its partitions, 
+  // to OffsetRequest.LatestTime
+  OffsetRequest.LatestTime
   val fromOffsets : Map[TopicAndPartition, Long] = ??? //  Map(TopicAndPartition(topic, partition))
   val messageHandler : MessageAndMetadata[String, String] => KeyValOffset[String, String] = 
     msgMeta => KeyValOffset(msgMeta.key, msgMeta.message, msgMeta.offset)
   val kafkaInputStreamWithOffset : InputDStream[KeyValOffset[String, String]] =
      KafkaUtils.createDirectStream[String, String, StringDecoder, StringDecoder, KeyValOffset[String, String]](ssc, kafkaParams, fromOffsets, messageHandler)
-    
+    */
   // check the connection  
   kafkaInputStream.print
   
   ssc.start
   ssc.awaitTermination
-//  
-//  (jssc, keyClass, valueClass, keyDecoderClass, valueDecoderClass, recordClass, kafkaParams, fromOffsets, messageHandler) 
-
+  
+  // TODO: check Avro events generator from Confluent
 }
