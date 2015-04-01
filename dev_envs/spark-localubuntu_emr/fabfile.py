@@ -48,6 +48,10 @@ def append_to_bashrc(line):
    '''
    local("echo {line} >> ".format(line=line) + _bashrc)
 
+def print_title(title):
+    print title
+    print '-' * len(title)
+
 ###################
 # Tasks
 ###################
@@ -59,9 +63,8 @@ def install_maven3():
     NOTE: Local execution
     See: https://happilyblogging.wordpress.com/2011/12/13/installing-maven-on-ubuntu-10-10/
     '''
-    print "Installing maven 3"
+    print_title("Installing maven 3")
     _maven_root = os.path.join(_install_root, "maven3")
-    print _maven_root 
     create_public_dir(_maven_root)
     with lcd(_maven_root):
         mvn_tgz_file = download_and_uncompress(_maven3_url)
@@ -70,9 +73,34 @@ def install_maven3():
         append_to_bashrc("'export M2_HOME={mvn_full_path}'".format(mvn_full_path=mvn_full_path))
         append_to_bashrc("'export M2=$M2_HOME/bin'")
         append_to_bashrc("'PATH=$M2:$PATH'")
-        local("pwd")
-        local("echo 'sudo rm -f " + mvn_tgz_file + "'")
         local("sudo rm -f " + mvn_tgz_file)
+
+_java_url = "http://download.oracle.com/otn-pub/java/jdk/7u75-b13/jdk-7u75-linux-x64.tar.gz"
+@task
+def install_java7():
+    '''
+    Installs the JDK for Java 7 from Oracle Corporation
+    NOTE: Local execution
+    NOTE: use the ideas of http://blog.kdecherf.com/2012/04/12/oracle-i-download-your-jdk-by-eating-magic-cookies/ for an automatic install
+    '''
+    print_title("Installing Oracle's JDK for Java 7")
+    _java_root = os.path.join(_install_root, "java7")
+    create_public_dir(_java_root)
+    with lcd(_java_root):
+        local('wget --no-cookies --header "Cookie: oraclelicense=accept-securebackup-cookie;" ' + _java_url)
+        java_tgz_file = os.path.basename(_java_url)
+        local("tar xzf " + java_tgz_file)
+        java_dir = get_child_name_with_prefix("jdk1.7")
+        java_full_path = os.path.join(_java_root, java_dir)
+        java_binary = os.path.join(java_full_path, "bin", "java")
+        append_to_bashrc("'# Java 7 Oracle JDK'")
+        append_to_bashrc("'export JAVA_ORACLE={java_full_path}'".format(java_full_path=java_full_path))
+        append_to_bashrc("'export JAVA_HOME=$JAVA_ORACLE'")
+        append_to_bashrc("'PATH=${JAVA_ORACLE}/bin:$PATH'")
+        local("echo sudo update-alternatives --install /usr/bin/java java {java_binary} 1".format(java_binary=java_binary))
+        local("echo sudo update-alternatives --set java {java_binary}".format(java_binary=java_binary))
+        local("sudo rm -f " + java_tgz_file)
+    local('java -version')
 
 @task
 def install_devenv():
@@ -81,3 +109,4 @@ def install_devenv():
     '''
     print "Installing the development environment"
     install_maven3()
+    install_java7()
