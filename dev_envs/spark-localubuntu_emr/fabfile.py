@@ -18,11 +18,13 @@ env.final_msgs = []
 ###################
 # Utils
 ###################
-def create_public_dir(dir_path):
+def create_public_dir(dir_path, override=False):
     '''
     Creates a directory dir_path with 777 permissions
     NOTE: Local execution
     '''
+    if override: 
+        local("sudo rm -rf " + dir_path)
     local("sudo mkdir -p " + dir_path)
     local("sudo chmod -R 777 " + dir_path)
 
@@ -166,17 +168,26 @@ def install_kafka():
     add_final_msg("Kafka logs are stored at /tmp/kafka-logs")
     print_final_msgs() # FIXME delete
 
+# spark_url = "http://apache.rediris.es/spark/spark-1.3.0/spark-1.3.0-bin-hadoop2.4.tgz"
+spark_url ="http://ftp.cixug.es/apache/spark/spark-1.3.0/spark-1.3.0-bin-hadoop2.4.tgz"
+@task
+def install_spark(override = True):
+    '''
+    Installs the spark REPL and job submit CLI
 
-# os.path.join(service_abs_dir)
-
-# bin/kafka-server-start.sh config/server.properties
-# bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic test
-
-# bin/kafka-topics.sh --list --zookeeper localhost:2181
-# bin/kafka-console-consumer.sh --zookeeper localhost:2181 --topic test --from-beginning
-#  bin/kafka-console-producer.sh --broker-list localhost:9092 --topic test 
-
-
+    NOTE: Local execution
+    '''
+    print_title("Installing Spark in local mode")
+    service_root = os.path.join(_install_root, "spark")
+    create_public_dir(service_root, override=override)
+    with lcd(service_root):
+        tgz_file = download_and_uncompress(spark_url)
+        service_dir = get_child_name_with_prefix("spark")
+        local("sudo rm -f " + tgz_file)
+    service_abs_dir = os.path.join(service_root, service_dir)
+    append_to_bashrc("'# Spark'")
+    append_to_bashrc("'export SPARK_HOME={path}'".format(path=service_abs_dir))
+    append_to_bashrc("'PATH=${SPARK_HOME}/bin:$PATH'")
 
 @task
 def install_devenv():
@@ -187,6 +198,8 @@ def install_devenv():
     install_maven3()
     install_java7()
     install_zookeeper()
+    install_kafka()
+    install_spark()
 
     add_final_msg("use setup_local_services.sh to start and stop the local versions of the services")
     print_final_msgs()
