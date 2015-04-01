@@ -2,6 +2,8 @@
 
 '''
 Local devel environment for Spark under XUbuntu 14.10
+
+TODO: many installations follow the same pattern, this could be abstracted
 '''
 
 from fabric.api import local, task, lcd, env
@@ -138,6 +140,43 @@ def install_zookeeper():
     zk_dir_abs = os.path.join(zk_root, zk_dir)
     add_final_msg("Start Zookeeper with " + os.path.join(zk_dir_abs, "bin", "zkServer.sh") + " start") 
     add_final_msg("Test the Zookeeper installation with " + os.path.join(zk_dir_abs, "bin", "zkCli.sh") + ", executing 'ls /'")
+
+kafka_url = "http://apache.rediris.es/kafka/0.8.1.1/kafka_2.10-0.8.1.1.tgz"
+@task 
+def install_kafka():
+    '''
+    Installs a single machine Kafka cluster for local execution
+
+    Using kafka_2.10_0.8.1, as that is the dependence used currently by Spark
+    Following http://kafka.apache.org/documentation.html#quickstart
+    '''
+    print_title("Installing Kafka in local mode")
+    service_root = os.path.join(_install_root, "kafka")
+    create_public_dir(service_root)
+    with lcd(service_root):
+        tgz_file = download_and_uncompress(kafka_url)
+        service_dir = get_child_name_with_prefix("kafka")
+        local("sudo rm -f " + tgz_file)
+    service_abs_dir = os.path.join(service_root, service_dir)
+    add_final_msg("Start Kafka (with Zookeeper already started) with " + os.path.join(service_abs_dir, "bin", "kafka-server-start.sh") + " " +  os.path.join(service_abs_dir, "config", "server.properties"))    
+    add_final_msg("  - create a Kafka topic 'test' with " + os.path.join(service_abs_dir, "bin", "kafka-topics.sh") + " --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic test")
+    add_final_msg("  - get a list of all the Kafka topics with " + os.path.join(service_abs_dir, "bin", "kafka-topics.sh") + " --list --zookeeper localhost:2181") 
+    add_final_msg("  - consume messages from the Kafka topic 'test' with " + os.path.join(service_abs_dir, "bin", "kafka-console-consumer.sh") + " --zookeeper localhost:2181 --topic test --from-beginning")
+    add_final_msg("  - produce messages for the Kafka topic 'test' with " + os.path.join(service_abs_dir, "bin", "kafka-console-producer.sh") + " --broker-list localhost:9092 --topic test ")
+    add_final_msg("Kafka logs are stored at /tmp/kafka-logs")
+    print_final_msgs() # FIXME delete
+
+
+# os.path.join(service_abs_dir)
+
+# bin/kafka-server-start.sh config/server.properties
+# bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic test
+
+# bin/kafka-topics.sh --list --zookeeper localhost:2181
+# bin/kafka-console-consumer.sh --zookeeper localhost:2181 --topic test --from-beginning
+#  bin/kafka-console-producer.sh --broker-list localhost:9092 --topic test 
+
+
 
 @task
 def install_devenv():
