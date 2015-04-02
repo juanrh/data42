@@ -68,8 +68,49 @@ def print_final_msgs():
     print 
     print os.linesep.join(env.final_msgs)
 
+def get_service_dir(service_name):
+    '''
+    :returns: the absolute path of the root directory of the installation of the service with name service_name
+    NOTE: Local execution
+    '''
+    service_root = os.path.join(_install_root, service_name)
+    with lcd(service_root):
+        service_dir = get_child_name_with_prefix(service_name)
+    return os.path.join(service_root, service_dir)
+
+######################################
+# Tasks local services operation
+######################################
+@task
+def kafka_local_consumer(topic):
+    '''
+    Launches the Kafka consumer console
+
+    NOTE: Local execution
+    '''
+    service_abs_dir = get_service_dir("kafka")
+    local(os.path.join(service_abs_dir, "bin", "kafka-console-consumer.sh") + " --zookeeper localhost:2181 --topic {topic} --from-beginning".format(topic = topic))
+
+@task
+def kafka_local_producer(topic):
+    '''
+    Launches the Kafka producer console
+
+    NOTE: Local execution
+    '''
+    service_abs_dir = get_service_dir("kafka")
+    local(os.path.join(service_abs_dir, "bin", "kafka-console-producer.sh") + " --broker-list localhost:9092 --topic " + topic)
+
+@task 
+def kafka_create_topic(topic):
+    '''
+    Creates a Kafka topic with the kafka script
+    '''
+    service_abs_dir = get_service_dir("kafka")
+    local(os.path.join(service_abs_dir, "bin", "kafka-topics.sh") + " --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic " + topic)
+
 ###################
-# Tasks
+# Tasks install 
 ###################
 _maven3_url = "ftp://mirror.reverse.net/pub/apache/maven/maven-3/3.3.1/binaries/apache-maven-3.3.1-bin.tar.gz"
 @task

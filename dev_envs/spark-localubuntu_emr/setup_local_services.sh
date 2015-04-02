@@ -1,14 +1,21 @@
 #!/bin/bash
 
-EXIT_CODE=0
 ZK_START_SCRIPT="/opt/zookeeper/zookeeper*/bin/zkServer.sh"
 KAFKA_ROOT="/opt/kafka/kafka*"
 
-function start {
-    echo "Starting Zookeeper"
-    $ZK_START_SCRIPT start
+function start_kafka {
     echo "Starting Kafka"
     $KAFKA_ROOT/bin/kafka-server-start.sh $KAFKA_ROOT/config/server.properties &> /dev/null &
+}
+
+function start_zoookeeper {
+    echo "Starting Zookeeper"
+    $ZK_START_SCRIPT start
+}
+
+function start {
+    start_zoookeeper
+    start_kafka
 }
 
 function set_kafka_broker_pid {
@@ -16,7 +23,7 @@ function set_kafka_broker_pid {
     kafka_broker_pid=$(ps ax | grep -i 'kafka\.Kafka' | grep java | grep -v grep | awk '{print $1}')
 }
 
-function stop {
+function stop_kafka {
     echo "Stopping Kafka"
     $KAFKA_ROOT/bin/kafka-server-stop.sh
     sleep 1
@@ -33,9 +40,16 @@ function stop {
         echo "Kafka is still running, trying with KILL"
         kill -KILL $kafka_broker_pid
     fi 
+}
 
+function stop_zookeeper {
     echo "Stopping Zookeeper"
     $ZK_START_SCRIPT stop
+}
+
+function stop {
+    stop_kafka
+    stop_zookeeper
 }
 
 function print_usage {
@@ -46,12 +60,6 @@ function print_usage {
 ################
 # Main 
 ################
-if [ $# -ne 1 ]
-then 
-    print_usage
-    exit 1
-fi 
-
 case "$1" in
   start)
     start
@@ -69,7 +77,9 @@ case "$1" in
     ;;
   *)
     print_usage
-    EXIT_CODE=2
+    # Do not exit so this script can be used as a lib too
+    # EXIT_CODE=2
 esac
 
-exit $EXIT_CODE
+# Do not exit so this script can be used as a lib too
+# exit $EXIT_CODE
