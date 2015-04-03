@@ -52,6 +52,8 @@ object KafkaDirectExample extends App {
    * in order to keep track of which is the last data that has been processed from Kafka in a Spark Streaming job that reads
    * from a single topic, we have to keep the offset of each partition that is consumed
    * */
+  // FIXME: replace with the other, using singleton ranges as offset ranges are inclusive in the from and exclusive in 
+  // the until, as seen in https://github.com/koeninger/kafka-exactly-once/blob/master/blogpost.md
   case class KeyValOffsetOld[K, V](key: Option[K], value : V, partition : Int, offset : Long) extends Serializable
   /**
    * @return a Spark InputDStream that reads from a Kafka topic using the direct API, and offset information 
@@ -65,7 +67,8 @@ object KafkaDirectExample extends App {
    * set the maximum number of messages per partition per batch."
    * 
    * THIS DOESN'T WORK: throws  kafka.common.OffsetOutOfRangeException, because the use of OffsetRequest.LatestTime
-   * is wrong. Probably we should use SimpleConsumer.getOffsetsBefore() to get the correct offsets for System.currentTimeMillis
+   * is wrong. Probably we should use SimpleConsumer.getOffsetsBefore() to get the correct offsets for System.currentTimeMillis.
+   * That is redoing the work done by org.apache.spark.streaming.kafka.KafkaCluster
    *      
    * */
   def createKafkaInputDStreamWithOffsets(ssc : StreamingContext, kafkaParams : Map[String, String], topic: String) 
