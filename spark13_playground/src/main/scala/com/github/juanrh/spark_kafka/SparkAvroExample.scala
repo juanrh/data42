@@ -4,6 +4,8 @@ import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import org.apache.spark.SparkConf
 import org.apache.spark.sql._
+// this allows using sqlContext.avroFile
+import com.databricks.spark.avro._
 
 object SparkAvroExample extends App {
   val master = "local[3]"
@@ -11,7 +13,8 @@ object SparkAvroExample extends App {
   val sc = new SparkContext(conf)
   val sqlContext = new SQLContext(sc)
   
-  val df = sqlContext.load("src/test/resources/episodes.avro", "com.databricks.spark.avro").cache
+  // val df = sqlContext.load("src/test/resources/episodes.avro", "com.databricks.spark.avro").cache
+  val df = sqlContext.avroFile("src/test/resources/episodes.avro")
   df.show
   df.registerTempTable("episodes")
   val lastDoc5Titles = sqlContext.sql("select title from episodes order by doctor desc limit 5")
